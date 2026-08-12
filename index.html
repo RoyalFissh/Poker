@@ -563,17 +563,17 @@
     showToast._tm = setTimeout(function(){ t.classList.remove('show'); }, 2200);
   }
 
-  async function save(){
+  function save(){
     try{
-      await window.storage.set('current-game', JSON.stringify({ players: state.players, nextId: nextId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ players: state.players, nextId: nextId }));
     }catch(e){}
   }
 
-  async function load(){
+  function load(){
     try{
-      var res = await window.storage.get('current-game');
-      if (res && res.value){
-        var parsed = JSON.parse(res.value);
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw){
+        var parsed = JSON.parse(raw);
         state.players = parsed.players || [];
         nextId = parsed.nextId || (state.players.length ? Math.max.apply(null, state.players.map(function(p){return p.id;})) + 1 : 1);
       }
