@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a2418">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Poker Ledger</title>
 <style>
   :root{
@@ -27,38 +30,55 @@
     --red-dim:#7a2b2b;
   }
   *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
   body{
     margin:0;
-    background:
-      radial-gradient(ellipse at top, #0e1a12 0%, var(--ink-0) 60%);
+    background:radial-gradient(ellipse at top, #0e1a12 0%, var(--ink-0) 60%);
+    background-attachment:fixed;
     color:var(--text-hi);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     min-height:100vh;
     padding:0 0 60px;
   }
-  .wrap{max-width:720px;margin:0 auto;padding:0 16px;}
+  .wrap{max-width:720px;margin:0 auto;padding:0 14px;}
 
   header{
-    padding:28px 16px 20px;
+    padding:26px 16px 16px;
     text-align:center;
     background:linear-gradient(180deg, var(--felt-900) 0%, rgba(13,46,30,0) 100%);
-    border-bottom:1px solid var(--felt-700);
   }
-  header h1{
-    margin:0;
-    font-size:22px;
-    letter-spacing:0.02em;
-    font-weight:700;
+  header h1{margin:0;font-size:22px;letter-spacing:0.02em;font-weight:700;}
+  header h1 .suit{color:var(--gold);margin:0 6px;}
+  header p{margin:6px 0 0;font-size:13px;color:var(--text-lo);}
+
+  /* ---------- tabs ---------- */
+  .tabs{
+    display:flex;
+    gap:6px;
+    max-width:720px;
+    margin:0 auto 4px;
+    padding:0 14px;
+  }
+  .tab{
+    flex:1;
+    background:var(--ink-1);
+    border:1px solid var(--line);
+    color:var(--text-mid);
+    border-radius:9px;
+    padding:11px 8px;
+    font-size:14px;
+    font-weight:600;
+    text-align:center;
+  }
+  .tab.active{
+    background:var(--felt-700);
+    border-color:var(--felt-500);
     color:var(--text-hi);
   }
-  header h1 .suit{color:var(--gold);margin:0 6px;}
-  header p{
-    margin:6px 0 0;
-    font-size:13px;
-    color:var(--text-lo);
-  }
+  .panel{display:none;}
+  .panel.active{display:block;}
 
-  .section{margin-top:22px;}
+  .section{margin-top:20px;}
   .section-title{
     font-size:12px;
     text-transform:uppercase;
@@ -69,140 +89,99 @@
     align-items:center;
     justify-content:space-between;
   }
-
   .card{
     background:var(--ink-1);
     border:1px solid var(--line);
     border-radius:10px;
-    padding:16px;
+    padding:15px;
   }
+  .hint{font-size:12px;color:var(--text-lo);line-height:1.5;}
 
-  .add-form{
-    display:flex;
-    gap:8px;
-    flex-wrap:wrap;
-  }
-  .add-form input{
+  /* ---------- inputs / buttons ---------- */
+  input[type=text], input[type=number]{
     background:var(--ink-2);
     border:1px solid var(--line);
     border-radius:7px;
     padding:10px 12px;
     color:var(--text-hi);
-    font-size:14px;
-    outline:none;
-  }
-  .add-form input:focus{border-color:var(--felt-500);}
-  .add-form input::placeholder{color:var(--text-lo);}
-  #name-input{flex:2;min-width:120px;}
-  #buyin-input{flex:1;min-width:90px;}
-
-  button{
-    cursor:pointer;
-    border:none;
+    font-size:16px;
     font-family:inherit;
-    font-weight:600;
+    outline:none;
+    width:100%;
   }
-  .btn-primary{
-    background:var(--felt-600);
-    color:var(--text-hi);
-    border-radius:7px;
-    padding:10px 18px;
-    font-size:14px;
-  }
-  .btn-primary:hover{background:var(--felt-500);}
+  input:focus{border-color:var(--felt-500);}
+  input::placeholder{color:var(--text-lo);}
+  input[disabled]{opacity:0.55;}
+  input[type=number]{-moz-appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+
+  button{cursor:pointer;border:none;font-family:inherit;font-weight:600;}
+  .btn-primary{background:var(--felt-600);color:var(--text-hi);border-radius:7px;padding:11px 18px;font-size:14px;}
   .btn-primary:active{transform:scale(0.98);}
+  .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text-mid);border-radius:7px;padding:9px 13px;font-size:13px;}
+  .btn-ghost:active{border-color:var(--felt-500);color:var(--text-hi);}
+  .btn-danger{background:transparent;border:1px solid var(--red-dim);color:var(--red);border-radius:7px;padding:6px 10px;font-size:12px;}
+  .btn-gold{background:var(--gold-dim);color:var(--text-hi);border-radius:7px;padding:11px 18px;font-size:14px;}
 
-  .btn-ghost{
-    background:transparent;
-    border:1px solid var(--line);
-    color:var(--text-mid);
-    border-radius:7px;
-    padding:8px 12px;
-    font-size:13px;
+  .error{color:var(--red);font-size:12px;margin-top:8px;}
+
+  /* ---------- add player ---------- */
+  .add-row{display:flex;gap:8px;}
+  .add-row .name-wrap{flex:2;min-width:0;}
+  .add-row .amt-wrap{flex:1;min-width:0;}
+  .add-actions{margin-top:9px;display:flex;gap:8px;}
+  .add-actions .btn-primary{flex:1;}
+
+  /* ---------- chip entry grid ---------- */
+  .chip-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(56px,1fr));
+    gap:7px;
   }
-  .btn-ghost:hover{border-color:var(--felt-500);color:var(--text-hi);}
-
-  .btn-danger{
-    background:transparent;
-    border:1px solid var(--red-dim);
-    color:var(--red);
-    border-radius:7px;
-    padding:6px 10px;
-    font-size:12px;
+  .chip-cell{text-align:center;}
+  .chip-dot{
+    width:17px;height:17px;border-radius:50%;
+    margin:0 auto 4px;
+    border:2px solid rgba(255,255,255,0.28);
+    box-shadow:0 0 0 1px rgba(0,0,0,0.4);
   }
-  .btn-danger:hover{background:rgba(201,64,64,0.12);}
-
-  .error{
-    color:var(--red);
-    font-size:12px;
+  .chip-cell .chip-cap{font-size:10px;color:var(--text-lo);margin-bottom:3px;}
+  .chip-cell input{padding:8px 4px;text-align:center;font-size:15px;}
+  .chip-total{
     margin-top:8px;
+    font-size:13px;
+    color:var(--gold);
+    font-weight:700;
+    text-align:right;
   }
 
+  /* ---------- player rows ---------- */
   .players{display:flex;flex-direction:column;gap:10px;}
   .player-row{
     background:var(--ink-1);
     border:1px solid var(--line);
     border-left:3px solid var(--felt-600);
     border-radius:9px;
-    padding:14px 16px;
+    padding:13px 14px;
   }
-  .player-top{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-bottom:10px;
-  }
-  .player-name{font-size:16px;font-weight:700;color:var(--text-hi);}
-  .player-total{font-size:12px;color:var(--text-lo);margin-top:2px;}
-
-  .player-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr auto;
-    gap:8px;
-    align-items:end;
-  }
+  .player-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;}
+  .player-name{font-size:16px;font-weight:700;}
+  .rebuy-list{font-size:12px;color:var(--text-lo);margin-top:3px;line-height:1.45;}
   .field-label{
-    font-size:11px;
-    text-transform:uppercase;
-    letter-spacing:0.05em;
-    color:var(--text-lo);
-    margin-bottom:4px;
-    display:block;
+    font-size:11px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--text-lo);margin-bottom:5px;display:block;
   }
   .field-label .gold{color:var(--gold-dim);}
-  .field input{
-    width:100%;
-    background:var(--ink-2);
-    border:1px solid var(--line);
-    border-radius:7px;
-    padding:9px 10px;
-    color:var(--text-hi);
-    font-size:14px;
-    outline:none;
-  }
-  .field input:focus{border-color:var(--felt-500);}
-  .field.stack input{border-color:var(--gold-dim);}
-  .field.stack input:focus{border-color:var(--gold);}
-
-  .rebuy-btn{
-    background:var(--ink-3);
-    border:1px solid var(--line);
-    color:var(--text-mid);
-    border-radius:7px;
-    padding:9px 12px;
-    font-size:13px;
-    white-space:nowrap;
-  }
-  .rebuy-btn:hover{border-color:var(--felt-500);color:var(--text-hi);}
-
+  .stack-block{margin-top:4px;}
+  .stack-block.total-mode{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;}
+  .stack-block input.stack-input{border-color:var(--gold-dim);}
+  .stack-block input.stack-input:focus{border-color:var(--gold);}
+  .row-actions{display:flex;gap:8px;margin-top:10px;}
+  .row-actions button{flex:1;}
   .player-footer{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-top:10px;
-    padding-top:10px;
-    border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:10px;padding-top:10px;border-top:1px solid var(--line);
   }
   .net{font-size:15px;font-weight:700;}
   .net.pos{color:var(--felt-400);}
@@ -210,343 +189,308 @@
   .net.zero{color:var(--text-lo);}
   .net-label{font-size:11px;color:var(--text-lo);font-weight:400;margin-right:6px;}
 
-  .rebuy-list{
-    font-size:12px;
-    color:var(--text-lo);
-    margin-top:4px;
-  }
-
   .empty{
-    text-align:center;
-    color:var(--text-lo);
-    font-size:14px;
-    padding:30px 10px;
-    border:1px dashed var(--line);
-    border-radius:10px;
+    text-align:center;color:var(--text-lo);font-size:14px;
+    padding:28px 12px;border:1px dashed var(--line);border-radius:10px;line-height:1.5;
   }
 
-  .summary-grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:10px;
-  }
-  .stat{
-    background:var(--ink-2);
-    border-radius:8px;
-    padding:12px 14px;
-  }
+  /* ---------- summary / settle ---------- */
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .stat{background:var(--ink-2);border-radius:8px;padding:12px 14px;}
   .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
-  .stat-value{font-size:20px;font-weight:700;margin-top:4px;}
+  .stat-value{font-size:19px;font-weight:700;margin-top:4px;}
   .balance-ok{color:var(--felt-400);}
   .balance-off{color:var(--red);}
-
-  .settle-list{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+  .settle-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
   .settle-row{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    background:var(--ink-2);
-    border-radius:8px;
-    padding:10px 14px;
-    font-size:14px;
+    display:flex;align-items:center;gap:9px;
+    background:var(--ink-2);border-radius:8px;padding:10px 13px;font-size:14px;
   }
-  .settle-row .amt{
-    margin-left:auto;
-    color:var(--gold);
-    font-weight:700;
-  }
+  .settle-row .amt{margin-left:auto;color:var(--gold);font-weight:700;}
   .settle-row .from{color:var(--red);font-weight:600;}
   .settle-row .to{color:var(--felt-400);font-weight:600;}
   .settle-note{font-size:12px;color:var(--text-lo);margin-top:10px;}
 
-  .toolbar{
-    display:flex;
-    gap:10px;
-    margin-top:22px;
-    justify-content:flex-end;
+  .toolbar{display:flex;gap:9px;margin-top:20px;}
+  .toolbar button{flex:1;}
+
+  /* ---------- chips tab ---------- */
+  .denom-row{
+    display:grid;
+    grid-template-columns:22px 1fr 108px;
+    gap:11px;align-items:center;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
   }
+  .denom-row:last-child{border-bottom:none;}
+  .denom-name{font-size:14px;font-weight:600;}
+  .denom-row input{text-align:right;}
+  .mode-toggle{display:flex;gap:8px;margin-top:4px;}
+  .mode-btn{
+    flex:1;background:var(--ink-2);border:1px solid var(--line);
+    color:var(--text-mid);border-radius:8px;padding:12px 8px;font-size:13px;
+  }
+  .mode-btn.active{background:var(--felt-700);border-color:var(--felt-500);color:var(--text-hi);}
+  .mode-btn small{display:block;font-weight:400;font-size:11px;color:var(--text-lo);margin-top:3px;}
+  .mode-btn.active small{color:var(--text-mid);}
+
+  /* ---------- history tab ---------- */
+  .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:430px;}
+  table.stats th{
+    text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
+    color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
+  }
+  table.stats th:first-child,table.stats td:first-child{text-align:left;}
+  table.stats td{padding:9px 0;text-align:right;border-bottom:1px solid rgba(51,58,52,0.5);}
+  table.stats td:first-child{font-weight:600;}
+  table.stats tr:last-child td{border-bottom:none;}
+  .pos{color:var(--felt-400);}
+  .neg{color:var(--red);}
+  .zero{color:var(--text-lo);}
+
+  .game-card{
+    background:var(--ink-1);border:1px solid var(--line);
+    border-radius:9px;padding:12px 14px;margin-bottom:9px;
+  }
+  .game-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  .game-date{font-size:13px;font-weight:600;}
+  .game-meta{font-size:11px;color:var(--text-lo);margin-top:2px;}
+  .game-lines{margin-top:9px;display:flex;flex-direction:column;gap:5px;}
+  .game-line{display:flex;justify-content:space-between;font-size:13px;gap:10px;}
+  .game-line .nm{color:var(--text-mid);}
+
+  .roster-row{
+    display:flex;align-items:center;gap:9px;
+    padding:9px 0;border-bottom:1px solid rgba(51,58,52,0.5);
+  }
+  .roster-row:last-child{border-bottom:none;}
+  .roster-row .nm{flex:1;font-size:14px;font-weight:600;}
+  .roster-row .ct{font-size:11px;color:var(--text-lo);}
+
+  /* ---------- modal ---------- */
+  .modal-back{
+    position:fixed;inset:0;background:rgba(0,0,0,0.72);
+    display:none;align-items:center;justify-content:center;
+    padding:18px;z-index:100;
+  }
+  .modal-back.show{display:flex;}
+  .modal{
+    background:var(--ink-1);border:1px solid var(--felt-700);
+    border-radius:12px;padding:18px;width:100%;max-width:400px;
+    max-height:88vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 8px;font-size:16px;}
+  .modal .modal-body{font-size:13px;color:var(--text-mid);line-height:1.55;}
+  .modal .modal-body input{margin-top:10px;}
+  .modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+  .modal-actions button{width:100%;padding:12px;font-size:14px;border-radius:8px;}
 
   .toast{
-    position:fixed;
-    bottom:20px;
-    left:50%;
-    transform:translateX(-50%) translateY(0);
-    background:var(--felt-700);
-    color:var(--text-hi);
-    padding:10px 18px;
-    border-radius:8px;
-    font-size:13px;
+    position:fixed;bottom:20px;left:50%;
+    transform:translateX(-50%);
+    background:var(--felt-700);color:var(--text-hi);
+    padding:11px 18px;border-radius:8px;font-size:13px;
     border:1px solid var(--felt-500);
-    opacity:0;
-    pointer-events:none;
+    opacity:0;pointer-events:none;
     transition:opacity 0.2s ease, transform 0.2s ease;
-    z-index:50;
+    z-index:200;max-width:90vw;text-align:center;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
-
-  @media (max-width:420px){
-    .player-grid{grid-template-columns:1fr 1fr;}
-    .rebuy-btn{grid-column:1/-1;}
-  }
 </style>
 </head>
 <body>
+
+<header>
+  <h1>Poker <span class="suit">&spades;</span> Ledger</h1>
+  <p>Buy-ins, rebuys, cash-outs, and who owes who</p>
+</header>
+
+<div class="tabs">
+  <button class="tab active" data-tab="table">Table</button>
+  <button class="tab" data-tab="chips">Chips</button>
+  <button class="tab" data-tab="history">History</button>
+</div>
+
 <div class="wrap">
 
-  <header>
-    <h1>Poker <span class="suit">&spades;</span> Ledger</h1>
-    <p>Buy-ins, rebuys, cash-outs, and who owes who</p>
-  </header>
+  <!-- ============ TABLE ============ -->
+  <div class="panel active" id="panel-table">
 
-  <div class="section">
-    <div class="section-title">Add a player</div>
-    <div class="card">
-      <div class="add-form">
-        <input id="name-input" type="text" placeholder="Player name" maxlength="24">
-        <input id="buyin-input" type="number" placeholder="Buy-in $" min="0" step="0.01">
-        <button class="btn-primary" id="add-btn">Add player</button>
-      </div>
-      <div class="error" id="add-error" style="display:none;"></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">
-      <span>Players</span>
-      <span id="player-count" style="color:var(--text-lo);font-size:11px;"></span>
-    </div>
-    <div class="players" id="players-list"></div>
-    <div class="empty" id="empty-state">No players yet. Add someone above to start the game.</div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Game summary</div>
-    <div class="card">
-      <div class="summary-grid">
-        <div class="stat">
-          <div class="stat-label">Total buy-ins</div>
-          <div class="stat-value" id="total-buyins">$0.00</div>
+    <div class="section">
+      <div class="section-title">Add a player</div>
+      <div class="card">
+        <div class="add-row">
+          <div class="name-wrap"><input id="name-input" type="text" placeholder="Player name" maxlength="24" autocomplete="off"></div>
+          <div class="amt-wrap" id="add-amt-wrap">
+            <input id="buyin-input" type="number" inputmode="decimal" placeholder="Buy-in $" min="0" step="0.01">
+          </div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Total on table</div>
-          <div class="stat-value" id="total-stacks">$0.00</div>
+        <div id="add-chip-wrap" style="display:none;margin-top:10px;"></div>
+        <div class="add-actions">
+          <button class="btn-primary" id="add-btn">Add player</button>
+        </div>
+        <div class="error" id="add-error" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span>Players</span>
+        <span id="player-count" style="font-size:11px;"></span>
+      </div>
+      <div class="players" id="players-list"></div>
+      <div class="empty" id="empty-state">No players yet. Add someone above to start the game.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Game summary</div>
+      <div class="card">
+        <div class="summary-grid">
+          <div class="stat">
+            <div class="stat-label">Total buy-ins</div>
+            <div class="stat-value" id="total-buyins">$0.00</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Total on table</div>
+            <div class="stat-value" id="total-stacks">$0.00</div>
+          </div>
+        </div>
+        <div style="margin-top:11px;font-size:13px;" id="balance-line"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Settle up</div>
+      <div class="card"><div id="settle-body"></div></div>
+    </div>
+
+    <div class="toolbar">
+      <button class="btn-ghost" id="copy-btn">Copy summary</button>
+      <button class="btn-gold" id="end-btn">End &amp; save</button>
+    </div>
+    <div class="toolbar" style="margin-top:9px;">
+      <button class="btn-ghost" id="reset-btn">Discard game</button>
+    </div>
+  </div>
+
+  <!-- ============ CHIPS ============ -->
+  <div class="panel" id="panel-chips">
+    <div class="section">
+      <div class="section-title">How stacks get entered</div>
+      <div class="card">
+        <div class="mode-toggle">
+          <button class="mode-btn" id="mode-total" data-mode="total">
+            Dollar total<small>Fastest — type one number</small>
+          </button>
+          <button class="mode-btn" id="mode-chips" data-mode="chips">
+            Chip counts<small>App does the math</small>
+          </button>
+        </div>
+        <div class="hint" style="margin-top:12px;">
+          Applies to the whole game &mdash; buy-ins, rebuys and final stacks. Switch anytime;
+          amounts already entered are kept.
         </div>
       </div>
-      <div style="margin-top:10px;font-size:13px;" id="balance-line"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Chip values</div>
+      <div class="card">
+        <div id="denom-list"></div>
+        <div class="hint" style="margin-top:12px;">
+          Set once and it sticks. Used to convert chip counts into dollars, and to check a stack
+          against what you counted.
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-ghost" id="denom-reset">Restore defaults</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Settle up</div>
-    <div class="card">
-      <div id="settle-body"></div>
+  <!-- ============ HISTORY ============ -->
+  <div class="panel" id="panel-history">
+    <div class="section">
+      <div class="section-title">Player stats</div>
+      <div class="card" id="stats-card"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span>Past games</span>
+        <span id="history-count" style="font-size:11px;"></span>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Roster</div>
+      <div class="card" id="roster-card"></div>
     </div>
   </div>
 
-  <div class="toolbar">
-    <button class="btn-ghost" id="copy-btn">Copy summary</button>
-    <button class="btn-ghost" id="reset-btn">New game</button>
-  </div>
+</div>
 
+<div class="modal-back" id="modal-back">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 (function(){
-  var STORAGE_KEY = 'poker-ledger:current-game';
-  var state = { players: [] };
-  var nextId = 1;
+  'use strict';
+
+  var KEY = 'poker-ledger:v2';
+  var OLD_KEY = 'poker-ledger:current-game';
+
+  var DEFAULT_COLORS = [
+    { key:'white', label:'White', css:'#efece0', value:0.05 },
+    { key:'red',   label:'Red',   css:'#c14040', value:0.10 },
+    { key:'green', label:'Green', css:'#2c8a4f', value:0.25 },
+    { key:'black', label:'Black', css:'#2e322e', value:0.50 },
+    { key:'blue',  label:'Blue',  css:'#3b6ea5', value:1.00 }
+  ];
+
+  var db = {
+    roster: [],          // { id, name }
+    colors: null,        // [{ key,label,css,value }]
+    entryMode: 'total',  // 'total' | 'chips'
+    game: { players: [] },// { rid, buyins:[num], finalStack:num|null }
+    history: [],         // { id, endedAt, entries:[{rid,name,totalIn,finalStack,net}] }
+    nextRosterId: 1,
+    nextGameId: 1
+  };
+
+  /* ---------------- money helpers ---------------- */
+
+  function round2(n){ return Math.round((n + Number.EPSILON) * 100) / 100; }
 
   function fmt(n){
-    var v = Math.round((n + Number.EPSILON) * 100) / 100;
-    var neg = v < 0;
-    var abs = Math.abs(v).toFixed(2);
-    return (neg ? '-$' : '$') + abs;
+    var v = round2(n);
+    return (v < 0 ? '-$' : '$') + Math.abs(v).toFixed(2);
   }
 
-  function playerTotal(p){
-    return p.buyins.reduce(function(sum, b){ return sum + b; }, 0);
-  }
-
-  function playerNet(p){
-    if (p.finalStack === null || p.finalStack === undefined) return null;
-    return p.finalStack - playerTotal(p);
-  }
-
-  function render(){
-    var list = document.getElementById('players-list');
-    var empty = document.getElementById('empty-state');
-    var countEl = document.getElementById('player-count');
-    list.innerHTML = '';
-
-    if (state.players.length === 0){
-      empty.style.display = 'block';
-    } else {
-      empty.style.display = 'none';
-    }
-    countEl.textContent = state.players.length ? state.players.length + ' at the table' : '';
-
-    state.players.forEach(function(p){
-      var total = playerTotal(p);
-      var net = playerNet(p);
-      var row = document.createElement('div');
-      row.className = 'player-row';
-
-      var rebuyText = p.buyins.length > 1
-        ? 'Buy-in ' + fmt(p.buyins[0]) + ' + ' + (p.buyins.length - 1) + ' rebuy' + (p.buyins.length - 1 > 1 ? 's' : '') + ' (' + p.buyins.slice(1).map(fmt).join(', ') + ')'
-        : 'Buy-in ' + fmt(p.buyins[0]);
-
-      var netClass = net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'));
-      var netText = net === null ? 'Awaiting cash-out' : fmt(net);
-
-      row.innerHTML =
-        '<div class="player-top">' +
-          '<div>' +
-            '<div class="player-name">' + escapeHtml(p.name) + '</div>' +
-            '<div class="rebuy-list">' + rebuyText + '</div>' +
-          '</div>' +
-          '<button class="btn-danger" data-remove="' + p.id + '">Remove</button>' +
-        '</div>' +
-        '<div class="player-grid">' +
-          '<div class="field">' +
-            '<span class="field-label">Total in</span>' +
-            '<input type="text" value="' + fmt(total) + '" disabled style="opacity:0.6;">' +
-          '</div>' +
-          '<div class="field stack">' +
-            '<span class="field-label"><span class="gold">&#9679;</span> Final stack</span>' +
-            '<input type="number" min="0" step="0.01" placeholder="0.00" data-stack="' + p.id + '" value="' + (p.finalStack === null || p.finalStack === undefined ? '' : p.finalStack) + '">' +
-          '</div>' +
-          '<button class="rebuy-btn" data-rebuy="' + p.id + '">+ Rebuy</button>' +
-        '</div>' +
-        '<div class="player-footer">' +
-          '<span><span class="net-label">Net</span><span class="net ' + netClass + '">' + netText + '</span></span>' +
-        '</div>';
-
-      list.appendChild(row);
+  // Chip math in integer cents so 0.05-style values never drift.
+  function chipsToDollars(counts){
+    var cents = 0;
+    db.colors.forEach(function(c){
+      var n = parseInt(counts[c.key], 10);
+      if (!isNaN(n) && n > 0) cents += Math.round(c.value * 100) * n;
     });
-
-    bindRowEvents();
-    renderSummary();
-    save();
+    return cents / 100;
   }
 
-  function bindRowEvents(){
-    document.querySelectorAll('[data-remove]').forEach(function(btn){
-      btn.onclick = function(){
-        var id = Number(btn.getAttribute('data-remove'));
-        state.players = state.players.filter(function(p){ return p.id !== id; });
-        render();
-      };
-    });
-    document.querySelectorAll('[data-rebuy]').forEach(function(btn){
-      btn.onclick = function(){
-        var id = Number(btn.getAttribute('data-rebuy'));
-        var amtStr = prompt('Rebuy amount ($)');
-        if (amtStr === null) return;
-        var amt = parseFloat(amtStr);
-        if (isNaN(amt) || amt <= 0){
-          showToast('Enter a valid rebuy amount');
-          return;
-        }
-        var p = state.players.find(function(p){ return p.id === id; });
-        p.buyins.push(amt);
-        render();
-        showToast('Rebuy added for ' + p.name);
-      };
-    });
-    document.querySelectorAll('[data-stack]').forEach(function(inp){
-      inp.oninput = function(){
-        var id = Number(inp.getAttribute('data-stack'));
-        var p = state.players.find(function(p){ return p.id === id; });
-        var v = inp.value === '' ? null : parseFloat(inp.value);
-        p.finalStack = (v === null || isNaN(v)) ? null : v;
-        renderSummary();
-        save();
-        updateNetInline(id);
-      };
-    });
-  }
-
-  function updateNetInline(id){
-    var p = state.players.find(function(p){ return p.id === id; });
-    var row = document.querySelector('[data-stack="' + id + '"]').closest('.player-row');
-    var net = playerNet(p);
-    var netEl = row.querySelector('.net');
-    var netClass = net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'));
-    netEl.className = 'net ' + netClass;
-    netEl.textContent = net === null ? 'Awaiting cash-out' : fmt(net);
-  }
-
-  function renderSummary(){
-    var totalBuyins = state.players.reduce(function(s,p){ return s + playerTotal(p); }, 0);
-    var stacksEntered = state.players.every(function(p){ return p.finalStack !== null && p.finalStack !== undefined; }) && state.players.length > 0;
-    var totalStacks = state.players.reduce(function(s,p){ return s + (p.finalStack || 0); }, 0);
-
-    document.getElementById('total-buyins').textContent = fmt(totalBuyins);
-    document.getElementById('total-stacks').textContent = stacksEntered ? fmt(totalStacks) : fmt(totalStacks) + ' (partial)';
-
-    var balanceLine = document.getElementById('balance-line');
-    if (!stacksEntered || state.players.length === 0){
-      balanceLine.innerHTML = '<span style="color:var(--text-lo);">Enter every final stack to check the balance.</span>';
-    } else {
-      var diff = Math.round((totalStacks - totalBuyins) * 100) / 100;
-      if (Math.abs(diff) < 0.01){
-        balanceLine.innerHTML = '<span class="balance-ok">Balanced &mdash; stacks match total buy-ins.</span>';
-      } else {
-        balanceLine.innerHTML = '<span class="balance-off">Off by ' + fmt(Math.abs(diff)) + ' (' + (diff > 0 ? 'stacks exceed buy-ins' : 'buy-ins exceed stacks') + '). Recount the chips.</span>';
-      }
-    }
-
-    renderSettle(stacksEntered);
-  }
-
-  function renderSettle(stacksEntered){
-    var body = document.getElementById('settle-body');
-    if (state.players.length === 0){
-      body.innerHTML = '<span style="color:var(--text-lo);font-size:13px;">Add players to see settlements.</span>';
-      return;
-    }
-    if (!stacksEntered){
-      body.innerHTML = '<span style="color:var(--text-lo);font-size:13px;">Waiting on final stacks from everyone.</span>';
-      return;
-    }
-
-    var balances = state.players.map(function(p){
-      return { name: p.name, net: Math.round(playerNet(p) * 100) / 100 };
-    });
-
-    var debtors = balances.filter(function(b){ return b.net < -0.004; }).map(function(b){ return { name: b.name, amt: -b.net }; });
-    var creditors = balances.filter(function(b){ return b.net > 0.004; }).map(function(b){ return { name: b.name, amt: b.net }; });
-
-    debtors.sort(function(a,b){ return b.amt - a.amt; });
-    creditors.sort(function(a,b){ return b.amt - a.amt; });
-
-    var transactions = [];
-    var di = 0, ci = 0;
-    while (di < debtors.length && ci < creditors.length){
-      var d = debtors[di], c = creditors[ci];
-      var amt = Math.min(d.amt, c.amt);
-      if (amt > 0.004){
-        transactions.push({ from: d.name, to: c.name, amt: amt });
-      }
-      d.amt -= amt;
-      c.amt -= amt;
-      if (d.amt <= 0.004) di++;
-      if (c.amt <= 0.004) ci++;
-    }
-
-    if (transactions.length === 0){
-      body.innerHTML = '<span style="color:var(--felt-400);font-size:14px;">Everyone broke even. Nobody owes anybody.</span>';
-      return;
-    }
-
-    var html = '<div class="settle-list">';
-    transactions.forEach(function(t){
-      html += '<div class="settle-row"><span class="from">' + escapeHtml(t.from) + '</span><span>&#8594;</span><span class="to">' + escapeHtml(t.to) + '</span><span class="amt">' + fmt(t.amt) + '</span></div>';
-    });
-    html += '</div><div class="settle-note">Minimum number of transactions to settle the table.</div>';
-    body.innerHTML = html;
+  // Compact chip caption: 5¢, 25¢, $1, $2.50
+  function denomLabel(v){
+    if (!v && v !== 0) return '';
+    if (v < 1) return Math.round(v * 100) + '¢';
+    return v % 1 === 0 ? '$' + v : '$' + v.toFixed(2);
   }
 
   function escapeHtml(s){
@@ -555,103 +499,918 @@
     });
   }
 
+  /* ---------------- persistence ---------------- */
+
+  function save(){
+    try{
+      localStorage.setItem(KEY, JSON.stringify(db));
+    }catch(e){}
+  }
+
+  function load(){
+    var raw = null;
+    try{ raw = localStorage.getItem(KEY); }catch(e){}
+
+    if (raw){
+      try{
+        var p = JSON.parse(raw);
+        db.roster      = p.roster || [];
+        db.colors      = p.colors || null;
+        db.entryMode   = p.entryMode === 'chips' ? 'chips' : 'total';
+        db.game        = p.game && p.game.players ? p.game : { players: [] };
+        db.history     = p.history || [];
+        db.nextRosterId= p.nextRosterId || 1;
+        db.nextGameId  = p.nextGameId || 1;
+      }catch(e){}
+    } else {
+      migrateOld();
+    }
+
+    if (!db.colors || !db.colors.length) db.colors = cloneDefaults();
+    // Guard against a saved file from an older shape.
+    db.colors = db.colors.map(function(c, i){
+      var d = DEFAULT_COLORS[i] || DEFAULT_COLORS[0];
+      return {
+        key: c.key || d.key,
+        label: c.label || d.label,
+        css: c.css || d.css,
+        value: typeof c.value === 'number' ? c.value : d.value
+      };
+    });
+    if (db.nextRosterId <= db.roster.length){
+      db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
+    }
+  }
+
+  function cloneDefaults(){
+    return DEFAULT_COLORS.map(function(c){
+      return { key:c.key, label:c.label, css:c.css, value:c.value };
+    });
+  }
+
+  // Carry over an in-progress game saved by the previous single-screen version.
+  function migrateOld(){
+    var raw = null;
+    try{ raw = localStorage.getItem(OLD_KEY); }catch(e){ return; }
+    if (!raw) return;
+    try{
+      var old = JSON.parse(raw);
+      if (!old || !old.players) return;
+      old.players.forEach(function(p){
+        var r = { id: db.nextRosterId++, name: p.name };
+        db.roster.push(r);
+        db.game.players.push({
+          rid: r.id,
+          buyins: p.buyins || [],
+          finalStack: (p.finalStack === undefined ? null : p.finalStack)
+        });
+      });
+    }catch(e){}
+  }
+
+  /* ---------------- roster ---------------- */
+
+  function rosterById(id){
+    for (var i = 0; i < db.roster.length; i++){
+      if (db.roster[i].id === id) return db.roster[i];
+    }
+    return null;
+  }
+
+  function rosterByName(name){
+    var n = name.trim().toLowerCase();
+    for (var i = 0; i < db.roster.length; i++){
+      if (db.roster[i].name.trim().toLowerCase() === n) return db.roster[i];
+    }
+    return null;
+  }
+
+  function nameOf(rid){
+    var r = rosterById(rid);
+    return r ? r.name : 'Unknown';
+  }
+
+  function inGame(rid){
+    return db.game.players.some(function(p){ return p.rid === rid; });
+  }
+
+  function statsFor(rid){
+    var sessions = 0, total = 0, best = null, worst = null;
+    db.history.forEach(function(g){
+      g.entries.forEach(function(e){
+        if (e.rid !== rid) return;
+        sessions++;
+        total += e.net;
+        if (best === null || e.net > best) best = e.net;
+        if (worst === null || e.net < worst) worst = e.net;
+      });
+    });
+    return {
+      sessions: sessions,
+      total: round2(total),
+      avg: sessions ? round2(total / sessions) : 0,
+      best: best,
+      worst: worst
+    };
+  }
+
+  /* ---------------- modal ---------------- */
+
+  var modalBack = document.getElementById('modal-back');
+
+  function openModal(opts){
+    document.getElementById('modal-title').textContent = opts.title;
+    document.getElementById('modal-body').innerHTML = opts.body || '';
+    var actions = document.getElementById('modal-actions');
+    actions.innerHTML = '';
+    (opts.buttons || []).forEach(function(b){
+      var btn = document.createElement('button');
+      btn.className = b.cls || 'btn-ghost';
+      btn.textContent = b.label;
+      btn.onclick = function(){ b.onClick && b.onClick(); };
+      actions.appendChild(btn);
+    });
+    modalBack.classList.add('show');
+    if (opts.focus){
+      var el = document.getElementById(opts.focus);
+      if (el) setTimeout(function(){ el.focus(); }, 50);
+    }
+  }
+
+  function closeModal(){ modalBack.classList.remove('show'); }
+
+  modalBack.onclick = function(e){ if (e.target === modalBack) closeModal(); };
+
   function showToast(msg){
     var t = document.getElementById('toast');
     t.textContent = msg;
     t.classList.add('show');
     clearTimeout(showToast._tm);
-    showToast._tm = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+    showToast._tm = setTimeout(function(){ t.classList.remove('show'); }, 2400);
   }
 
-  function save(){
-    try{
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ players: state.players, nextId: nextId }));
-    }catch(e){}
+  /* ---------------- chip input widget ---------------- */
+
+  // Renders a grid of per-colour count inputs. `ns` namespaces the element ids
+  // so several grids can coexist (add form, each player row, modal).
+  function chipGridHtml(ns, counts){
+    counts = counts || {};
+    var h = '<div class="chip-grid">';
+    db.colors.forEach(function(c){
+      h += '<div class="chip-cell">' +
+             '<div class="chip-dot" style="background:' + c.css + ';"></div>' +
+             '<div class="chip-cap">' + denomLabel(c.value) + '</div>' +
+             '<input type="number" inputmode="numeric" min="0" step="1" placeholder="0" ' +
+               'data-chip="' + ns + '" data-color="' + c.key + '" ' +
+               'value="' + (counts[c.key] || '') + '">' +
+           '</div>';
+    });
+    h += '</div><div class="chip-total" id="chiptotal-' + ns + '">$0.00</div>';
+    return h;
   }
 
-  function load(){
-    try{
-      var raw = localStorage.getItem(STORAGE_KEY);
-      if (raw){
-        var parsed = JSON.parse(raw);
-        state.players = parsed.players || [];
-        nextId = parsed.nextId || (state.players.length ? Math.max.apply(null, state.players.map(function(p){return p.id;})) + 1 : 1);
+  function readChipGrid(ns){
+    var counts = {};
+    document.querySelectorAll('[data-chip="' + ns + '"]').forEach(function(inp){
+      counts[inp.getAttribute('data-color')] = inp.value;
+    });
+    return counts;
+  }
+
+  function bindChipGrid(ns, onChange){
+    document.querySelectorAll('[data-chip="' + ns + '"]').forEach(function(inp){
+      inp.oninput = function(){
+        var dollars = chipsToDollars(readChipGrid(ns));
+        var totalEl = document.getElementById('chiptotal-' + ns);
+        if (totalEl) totalEl.textContent = fmt(dollars);
+        if (onChange) onChange(dollars);
+      };
+    });
+    var d = chipsToDollars(readChipGrid(ns));
+    var te = document.getElementById('chiptotal-' + ns);
+    if (te) te.textContent = fmt(d);
+  }
+
+  function clearChipGrid(ns){
+    document.querySelectorAll('[data-chip="' + ns + '"]').forEach(function(inp){ inp.value = ''; });
+    var te = document.getElementById('chiptotal-' + ns);
+    if (te) te.textContent = fmt(0);
+  }
+
+  /* ---------------- game math ---------------- */
+
+  function totalIn(p){
+    return round2(p.buyins.reduce(function(s,b){ return s + b; }, 0));
+  }
+
+  function netOf(p){
+    if (p.finalStack === null || p.finalStack === undefined) return null;
+    return round2(p.finalStack - totalIn(p));
+  }
+
+  function allStacksIn(){
+    return db.game.players.length > 0 && db.game.players.every(function(p){
+      return p.finalStack !== null && p.finalStack !== undefined;
+    });
+  }
+
+  /* ---------------- render: table tab ---------------- */
+
+  function renderAddForm(){
+    var amtWrap = document.getElementById('add-amt-wrap');
+    var chipWrap = document.getElementById('add-chip-wrap');
+    if (db.entryMode === 'chips'){
+      amtWrap.style.display = 'none';
+      chipWrap.style.display = 'block';
+      chipWrap.innerHTML = '<span class="field-label">Buy-in chips</span>' + chipGridHtml('add', {});
+      bindChipGrid('add');
+    } else {
+      amtWrap.style.display = 'block';
+      chipWrap.style.display = 'none';
+      chipWrap.innerHTML = '';
+    }
+  }
+
+  function renderPlayers(){
+    var list = document.getElementById('players-list');
+    var empty = document.getElementById('empty-state');
+    var count = document.getElementById('player-count');
+    list.innerHTML = '';
+
+    empty.style.display = db.game.players.length ? 'none' : 'block';
+    count.textContent = db.game.players.length ? db.game.players.length + ' at the table' : '';
+
+    db.game.players.forEach(function(p){
+      var tin = totalIn(p);
+      var net = netOf(p);
+      var row = document.createElement('div');
+      row.className = 'player-row';
+
+      var rebuyText = p.buyins.length > 1
+        ? 'Buy-in ' + fmt(p.buyins[0]) + ' + ' + (p.buyins.length - 1) + ' rebuy' +
+          (p.buyins.length - 1 > 1 ? 's' : '') + ' (' + p.buyins.slice(1).map(fmt).join(', ') + ')'
+        : 'Buy-in ' + fmt(p.buyins[0] || 0);
+
+      var netClass = net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'));
+      var netText  = net === null ? 'Awaiting cash-out' : fmt(net);
+
+      var stackHtml;
+      if (db.entryMode === 'chips'){
+        stackHtml =
+          '<div class="stack-block">' +
+            '<span class="field-label"><span class="gold">&#9679;</span> Final stack &mdash; chip counts</span>' +
+            chipGridHtml('p' + p.rid, p.stackCounts || {}) +
+          '</div>';
+      } else {
+        stackHtml =
+          '<div class="stack-block total-mode">' +
+            '<div>' +
+              '<span class="field-label">Total in</span>' +
+              '<input type="text" value="' + fmt(tin) + '" disabled>' +
+            '</div>' +
+            '<div>' +
+              '<span class="field-label"><span class="gold">&#9679;</span> Final stack</span>' +
+              '<input class="stack-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" ' +
+                'data-stack="' + p.rid + '" value="' +
+                (p.finalStack === null || p.finalStack === undefined ? '' : p.finalStack) + '">' +
+            '</div>' +
+          '</div>';
       }
-    }catch(e){}
-    render();
+
+      row.innerHTML =
+        '<div class="player-top">' +
+          '<div>' +
+            '<div class="player-name">' + escapeHtml(nameOf(p.rid)) + '</div>' +
+            '<div class="rebuy-list">' + rebuyText + ' &middot; total in ' + fmt(tin) + '</div>' +
+          '</div>' +
+          '<button class="btn-danger" data-remove="' + p.rid + '">Remove</button>' +
+        '</div>' +
+        stackHtml +
+        '<div class="row-actions">' +
+          '<button class="btn-ghost" data-rebuy="' + p.rid + '">+ Rebuy</button>' +
+        '</div>' +
+        '<div class="player-footer">' +
+          '<span><span class="net-label">Net</span>' +
+          '<span class="net ' + netClass + '" data-net="' + p.rid + '">' + netText + '</span></span>' +
+        '</div>';
+
+      list.appendChild(row);
+    });
+
+    bindPlayerEvents();
   }
 
-  document.getElementById('add-btn').onclick = function(){
-    var nameInput = document.getElementById('name-input');
-    var buyinInput = document.getElementById('buyin-input');
-    var errEl = document.getElementById('add-error');
-    var name = nameInput.value.trim();
-    var buyin = parseFloat(buyinInput.value);
+  function bindPlayerEvents(){
+    document.querySelectorAll('[data-remove]').forEach(function(btn){
+      btn.onclick = function(){
+        var rid = Number(btn.getAttribute('data-remove'));
+        db.game.players = db.game.players.filter(function(p){ return p.rid !== rid; });
+        renderAll();
+      };
+    });
 
-    if (!name){
-      errEl.textContent = 'Enter a player name';
-      errEl.style.display = 'block';
+    document.querySelectorAll('[data-rebuy]').forEach(function(btn){
+      btn.onclick = function(){ promptRebuy(Number(btn.getAttribute('data-rebuy'))); };
+    });
+
+    // Dollar-total stack inputs
+    document.querySelectorAll('[data-stack]').forEach(function(inp){
+      inp.oninput = function(){
+        var rid = Number(inp.getAttribute('data-stack'));
+        var p = findPlayer(rid);
+        if (!p) return;
+        var v = inp.value === '' ? null : parseFloat(inp.value);
+        p.finalStack = (v === null || isNaN(v)) ? null : v;
+        updateNetInline(rid);
+        renderSummary();
+        save();
+      };
+    });
+
+    // Chip-count stack grids
+    if (db.entryMode === 'chips'){
+      db.game.players.forEach(function(p){
+        bindChipGrid('p' + p.rid, function(dollars){
+          var counts = readChipGrid('p' + p.rid);
+          var any = Object.keys(counts).some(function(k){ return counts[k] !== '' && counts[k] !== null; });
+          p.stackCounts = counts;
+          p.finalStack = any ? dollars : null;
+          updateNetInline(p.rid);
+          renderSummary();
+          save();
+        });
+      });
+    }
+  }
+
+  function findPlayer(rid){
+    for (var i = 0; i < db.game.players.length; i++){
+      if (db.game.players[i].rid === rid) return db.game.players[i];
+    }
+    return null;
+  }
+
+  function updateNetInline(rid){
+    var p = findPlayer(rid);
+    var el = document.querySelector('[data-net="' + rid + '"]');
+    if (!p || !el) return;
+    var net = netOf(p);
+    el.className = 'net ' + (net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero')));
+    el.textContent = net === null ? 'Awaiting cash-out' : fmt(net);
+  }
+
+  function renderSummary(){
+    var buyins = round2(db.game.players.reduce(function(s,p){ return s + totalIn(p); }, 0));
+    var stacks = round2(db.game.players.reduce(function(s,p){ return s + (p.finalStack || 0); }, 0));
+    var complete = allStacksIn();
+
+    document.getElementById('total-buyins').textContent = fmt(buyins);
+    document.getElementById('total-stacks').textContent = complete ? fmt(stacks) : fmt(stacks) + ' (partial)';
+
+    var line = document.getElementById('balance-line');
+    if (!complete){
+      line.innerHTML = '<span style="color:var(--text-lo);">Enter every final stack to check the balance.</span>';
+    } else {
+      var diff = round2(stacks - buyins);
+      if (Math.abs(diff) < 0.01){
+        line.innerHTML = '<span class="balance-ok">Balanced &mdash; stacks match total buy-ins.</span>';
+      } else {
+        line.innerHTML = '<span class="balance-off">Off by ' + fmt(Math.abs(diff)) + ' (' +
+          (diff > 0 ? 'stacks exceed buy-ins' : 'buy-ins exceed stacks') + '). Recount the chips.</span>';
+      }
+    }
+    renderSettle(complete);
+  }
+
+  function renderSettle(complete){
+    var body = document.getElementById('settle-body');
+    if (!db.game.players.length){
+      body.innerHTML = '<span class="hint">Add players to see settlements.</span>';
       return;
     }
-    if (isNaN(buyin) || buyin <= 0){
-      errEl.textContent = 'Enter a buy-in amount greater than $0';
-      errEl.style.display = 'block';
+    if (!complete){
+      body.innerHTML = '<span class="hint">Waiting on final stacks from everyone.</span>';
       return;
+    }
+
+    var debtors = [], creditors = [];
+    db.game.players.forEach(function(p){
+      var net = netOf(p);
+      if (net < -0.004) debtors.push({ name: nameOf(p.rid), amt: -net });
+      else if (net > 0.004) creditors.push({ name: nameOf(p.rid), amt: net });
+    });
+    debtors.sort(function(a,b){ return b.amt - a.amt; });
+    creditors.sort(function(a,b){ return b.amt - a.amt; });
+
+    var tx = [], di = 0, ci = 0;
+    while (di < debtors.length && ci < creditors.length){
+      var d = debtors[di], c = creditors[ci];
+      var amt = Math.min(d.amt, c.amt);
+      if (amt > 0.004) tx.push({ from: d.name, to: c.name, amt: amt });
+      d.amt -= amt; c.amt -= amt;
+      if (d.amt <= 0.004) di++;
+      if (c.amt <= 0.004) ci++;
+    }
+
+    if (!tx.length){
+      body.innerHTML = '<span style="color:var(--felt-400);font-size:14px;">Everyone broke even. Nobody owes anybody.</span>';
+      return;
+    }
+
+    var h = '<div class="settle-list">';
+    tx.forEach(function(t){
+      h += '<div class="settle-row">' +
+             '<span class="from">' + escapeHtml(t.from) + '</span>' +
+             '<span>&#8594;</span>' +
+             '<span class="to">' + escapeHtml(t.to) + '</span>' +
+             '<span class="amt">' + fmt(t.amt) + '</span>' +
+           '</div>';
+    });
+    h += '</div><div class="settle-note">Minimum number of transactions to settle the table.</div>';
+    body.innerHTML = h;
+  }
+
+  /* ---------------- add player + duplicate names ---------------- */
+
+  function readBuyin(){
+    if (db.entryMode === 'chips') return chipsToDollars(readChipGrid('add'));
+    var v = parseFloat(document.getElementById('buyin-input').value);
+    return isNaN(v) ? 0 : v;
+  }
+
+  function addPlayerFlow(){
+    var nameInput = document.getElementById('name-input');
+    var errEl = document.getElementById('add-error');
+    var name = nameInput.value.trim();
+    var buyin = readBuyin();
+
+    function fail(msg){
+      errEl.textContent = msg;
+      errEl.style.display = 'block';
+    }
+
+    if (!name) return fail('Enter a player name');
+    if (buyin <= 0){
+      return fail(db.entryMode === 'chips'
+        ? 'Enter the chips this player is buying in with'
+        : 'Enter a buy-in amount greater than $0');
     }
     errEl.style.display = 'none';
 
-    state.players.push({
-      id: nextId++,
-      name: name,
-      buyins: [buyin],
-      finalStack: null
+    var existing = rosterByName(name);
+
+    if (!existing){
+      commitPlayer(createRoster(name), buyin);
+      return;
+    }
+
+    // Same name already seated tonight — the two-Tonys case. Never silently merge them.
+    if (inGame(existing.id)){
+      openModal({
+        title: escapeHtml(existing.name) + ' is already seated',
+        body: 'There is already a ' + escapeHtml(existing.name) + ' at this table. ' +
+              'Is this a second person with the same name, or the same one buying more chips?',
+        buttons: [
+          { label: 'Different person — add separately', cls:'btn-primary', onClick: function(){
+              askDistinctName(existing.name, buyin);
+          }},
+          { label: 'Same person — make it a rebuy', cls:'btn-ghost', onClick: function(){
+              var p = findPlayer(existing.id);
+              if (p) p.buyins.push(round2(buyin));
+              closeModal();
+              clearAddForm();
+              renderAll();
+              showToast('Rebuy ' + fmt(buyin) + ' for ' + existing.name);
+          }},
+          { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+        ]
+      });
+      return;
+    }
+
+    // Known name, not seated — is this the same human returning, or someone new?
+    var s = statsFor(existing.id);
+    var blurb = s.sessions
+      ? escapeHtml(existing.name) + ' is already in your roster with ' + s.sessions +
+        ' session' + (s.sessions === 1 ? '' : 's') + ' recorded (' + fmt(s.total) + ' lifetime).'
+      : escapeHtml(existing.name) + ' is already in your roster, but has no completed sessions yet.';
+
+    openModal({
+      title: 'Same ' + escapeHtml(existing.name) + '?',
+      body: blurb + '<br><br>If this is a different person, give them a name that tells them apart ' +
+            'so their stats never get mixed together.',
+      buttons: [
+        { label: 'Same person — use their stats', cls:'btn-primary', onClick: function(){
+            closeModal();
+            commitPlayer(existing.id, buyin);
+        }},
+        { label: 'Different person', cls:'btn-ghost', onClick: function(){
+            askDistinctName(existing.name, buyin);
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
     });
-    nameInput.value = '';
-    buyinInput.value = '';
-    nameInput.focus();
-    render();
-  };
+  }
+
+  function askDistinctName(taken, buyin){
+    openModal({
+      title: 'Tell them apart',
+      body: '"' + escapeHtml(taken) + '" is taken. Enter a distinguishing name &mdash; ' +
+            'for example <em>' + escapeHtml(taken) + ' B.</em> or <em>' + escapeHtml(taken) + ' (Thursday)</em>.' +
+            '<input type="text" id="distinct-input" maxlength="24" placeholder="New name" autocomplete="off">' +
+            '<div class="error" id="distinct-error" style="display:none;"></div>',
+      focus: 'distinct-input',
+      buttons: [
+        { label: 'Add player', cls:'btn-primary', onClick: function(){
+            var v = document.getElementById('distinct-input').value.trim();
+            var err = document.getElementById('distinct-error');
+            if (!v){
+              err.textContent = 'Enter a name';
+              err.style.display = 'block';
+              return;
+            }
+            if (rosterByName(v)){
+              err.textContent = 'That name is taken too. Try something else.';
+              err.style.display = 'block';
+              return;
+            }
+            closeModal();
+            commitPlayer(createRoster(v), buyin);
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
+
+  function createRoster(name){
+    var r = { id: db.nextRosterId++, name: name };
+    db.roster.push(r);
+    return r.id;
+  }
+
+  function clearAddForm(){
+    document.getElementById('name-input').value = '';
+    if (db.entryMode === 'chips') clearChipGrid('add');
+    else document.getElementById('buyin-input').value = '';
+    document.getElementById('add-error').style.display = 'none';
+  }
+
+  function commitPlayer(rid, buyin){
+    db.game.players.push({ rid: rid, buyins: [round2(buyin)], finalStack: null, stackCounts: {} });
+    clearAddForm();
+    renderAll();
+    showToast(nameOf(rid) + ' added for ' + fmt(buyin));
+  }
+
+  /* ---------------- rebuy ---------------- */
+
+  function promptRebuy(rid){
+    var body, focus;
+    if (db.entryMode === 'chips'){
+      body = 'How many chips is ' + escapeHtml(nameOf(rid)) + ' rebuying for?' + chipGridHtml('rebuy', {});
+    } else {
+      body = 'Rebuy amount for ' + escapeHtml(nameOf(rid)) + '.' +
+             '<input type="number" inputmode="decimal" id="rebuy-input" min="0" step="0.01" placeholder="0.00">';
+      focus = 'rebuy-input';
+    }
+    body += '<div class="error" id="rebuy-error" style="display:none;"></div>';
+
+    openModal({
+      title: 'Add rebuy',
+      body: body,
+      focus: focus,
+      buttons: [
+        { label: 'Add rebuy', cls:'btn-primary', onClick: function(){
+            var amt = db.entryMode === 'chips'
+              ? chipsToDollars(readChipGrid('rebuy'))
+              : parseFloat(document.getElementById('rebuy-input').value);
+            var err = document.getElementById('rebuy-error');
+            if (isNaN(amt) || amt <= 0){
+              err.textContent = 'Enter an amount greater than $0';
+              err.style.display = 'block';
+              return;
+            }
+            var p = findPlayer(rid);
+            if (p) p.buyins.push(round2(amt));
+            closeModal();
+            renderAll();
+            showToast('Rebuy ' + fmt(amt) + ' for ' + nameOf(rid));
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+
+    if (db.entryMode === 'chips') bindChipGrid('rebuy');
+  }
+
+  /* ---------------- end / discard game ---------------- */
+
+  function endGame(){
+    if (!db.game.players.length) return showToast('No game to save');
+    if (!allStacksIn()) return showToast('Enter every final stack first');
+
+    openModal({
+      title: 'Save this game?',
+      body: 'Records ' + db.game.players.length + ' player' + (db.game.players.length === 1 ? '' : 's') +
+            ' to your history and clears the table for the next one.',
+      buttons: [
+        { label: 'Save to history', cls:'btn-primary', onClick: function(){
+            var entries = db.game.players.map(function(p){
+              return {
+                rid: p.rid,
+                name: nameOf(p.rid),
+                totalIn: totalIn(p),
+                finalStack: round2(p.finalStack),
+                net: netOf(p)
+              };
+            });
+            db.history.unshift({
+              id: db.nextGameId++,
+              endedAt: new Date().toISOString(),
+              entries: entries
+            });
+            db.game = { players: [] };
+            closeModal();
+            renderAll();
+            showToast('Game saved to history');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
+
+  function discardGame(){
+    if (!db.game.players.length) return;
+    openModal({
+      title: 'Discard this game?',
+      body: 'Clears the table without saving anything to history. This cannot be undone.',
+      buttons: [
+        { label: 'Discard', cls:'btn-danger', onClick: function(){
+            db.game = { players: [] };
+            closeModal();
+            renderAll();
+            showToast('Table cleared');
+        }},
+        { label: 'Keep playing', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
+
+  /* ---------------- render: chips tab ---------------- */
+
+  function renderChips(){
+    document.getElementById('mode-total').className = 'mode-btn' + (db.entryMode === 'total' ? ' active' : '');
+    document.getElementById('mode-chips').className = 'mode-btn' + (db.entryMode === 'chips' ? ' active' : '');
+
+    var list = document.getElementById('denom-list');
+    list.innerHTML = '';
+    db.colors.forEach(function(c){
+      var row = document.createElement('div');
+      row.className = 'denom-row';
+      row.innerHTML =
+        '<div class="chip-dot" style="margin:0;background:' + c.css + ';"></div>' +
+        '<div class="denom-name">' + escapeHtml(c.label) + '</div>' +
+        '<input type="number" inputmode="decimal" min="0" step="0.01" data-denom="' + c.key + '" value="' + c.value + '">';
+      list.appendChild(row);
+    });
+
+    document.querySelectorAll('[data-denom]').forEach(function(inp){
+      inp.oninput = function(){
+        var key = inp.getAttribute('data-denom');
+        var v = parseFloat(inp.value);
+        db.colors.forEach(function(c){ if (c.key === key) c.value = isNaN(v) ? 0 : v; });
+        save();
+      };
+    });
+  }
+
+  /* ---------------- render: history tab ---------------- */
+
+  function renderHistory(){
+    // --- stats table ---
+    var card = document.getElementById('stats-card');
+    var played = db.roster.filter(function(r){ return statsFor(r.id).sessions > 0; });
+
+    if (!played.length){
+      card.innerHTML = '<div class="hint">No completed games yet. Finish a game with ' +
+                       '<strong>End &amp; save</strong> and stats will build up here.</div>';
+    } else {
+      var rows = played.map(function(r){ return { r:r, s:statsFor(r.id) }; });
+      rows.sort(function(a,b){ return b.s.total - a.s.total; });
+
+      var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
+              '<th>Player</th><th>Games</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              '</tr></thead><tbody>';
+      rows.forEach(function(x){
+        h += '<tr>' +
+               '<td>' + escapeHtml(x.r.name) + '</td>' +
+               '<td>' + x.s.sessions + '</td>' +
+               '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
+               '<td class="' + cls(x.s.avg) + '">' + fmt(x.s.avg) + '</td>' +
+               '<td class="' + cls(x.s.best) + '">' + fmt(x.s.best || 0) + '</td>' +
+               '<td class="' + cls(x.s.worst) + '">' + fmt(x.s.worst || 0) + '</td>' +
+             '</tr>';
+      });
+      h += '</tbody></table></div>';
+      card.innerHTML = h;
+    }
+
+    // --- past games ---
+    var list = document.getElementById('history-list');
+    var countEl = document.getElementById('history-count');
+    countEl.textContent = db.history.length ? db.history.length + ' saved' : '';
+    list.innerHTML = '';
+
+    if (!db.history.length){
+      list.innerHTML = '<div class="empty">Nothing saved yet.</div>';
+    } else {
+      db.history.forEach(function(g){
+        var pot = round2(g.entries.reduce(function(s,e){ return s + e.totalIn; }, 0));
+        var d = new Date(g.endedAt);
+        var when = isNaN(d.getTime()) ? 'Unknown date'
+          : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+
+        var lines = g.entries.slice().sort(function(a,b){ return b.net - a.net; }).map(function(e){
+          return '<div class="game-line">' +
+                   '<span class="nm">' + escapeHtml(e.name) + '</span>' +
+                   '<span class="' + cls(e.net) + '">' + fmt(e.net) + '</span>' +
+                 '</div>';
+        }).join('');
+
+        var card2 = document.createElement('div');
+        card2.className = 'game-card';
+        card2.innerHTML =
+          '<div class="game-head">' +
+            '<div>' +
+              '<div class="game-date">' + when + '</div>' +
+              '<div class="game-meta">' + g.entries.length + ' players &middot; ' + fmt(pot) + ' in play</div>' +
+            '</div>' +
+            '<button class="btn-danger" data-delgame="' + g.id + '">Delete</button>' +
+          '</div>' +
+          '<div class="game-lines">' + lines + '</div>';
+        list.appendChild(card2);
+      });
+
+      document.querySelectorAll('[data-delgame]').forEach(function(btn){
+        btn.onclick = function(){
+          var id = Number(btn.getAttribute('data-delgame'));
+          openModal({
+            title: 'Delete this game?',
+            body: 'It is removed from history and from every player\'s stats. This cannot be undone.',
+            buttons: [
+              { label: 'Delete', cls:'btn-danger', onClick: function(){
+                  db.history = db.history.filter(function(g){ return g.id !== id; });
+                  closeModal();
+                  renderAll();
+                  showToast('Game deleted');
+              }},
+              { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+            ]
+          });
+        };
+      });
+    }
+
+    // --- roster ---
+    var rc = document.getElementById('roster-card');
+    if (!db.roster.length){
+      rc.innerHTML = '<div class="hint">Players you add show up here and are remembered between games.</div>';
+    } else {
+      var rh = '';
+      db.roster.forEach(function(r){
+        var s = statsFor(r.id);
+        rh += '<div class="roster-row">' +
+                '<div class="nm">' + escapeHtml(r.name) +
+                  '<div class="ct">' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') +
+                  (inGame(r.id) ? ' &middot; at the table now' : '') + '</div>' +
+                '</div>' +
+                '<button class="btn-ghost" data-rename="' + r.id + '">Rename</button>' +
+              '</div>';
+      });
+      rc.innerHTML = rh;
+
+      document.querySelectorAll('[data-rename]').forEach(function(btn){
+        btn.onclick = function(){
+          var rid = Number(btn.getAttribute('data-rename'));
+          var r = rosterById(rid);
+          if (!r) return;
+          openModal({
+            title: 'Rename player',
+            body: 'Their history and stats stay attached &mdash; only the display name changes.' +
+                  '<input type="text" id="rename-input" maxlength="24" value="' + escapeHtml(r.name) + '">' +
+                  '<div class="error" id="rename-error" style="display:none;"></div>',
+            focus: 'rename-input',
+            buttons: [
+              { label: 'Save name', cls:'btn-primary', onClick: function(){
+                  var v = document.getElementById('rename-input').value.trim();
+                  var err = document.getElementById('rename-error');
+                  if (!v){
+                    err.textContent = 'Enter a name';
+                    err.style.display = 'block';
+                    return;
+                  }
+                  var clash = rosterByName(v);
+                  if (clash && clash.id !== rid){
+                    err.textContent = 'Another player already uses that name.';
+                    err.style.display = 'block';
+                    return;
+                  }
+                  r.name = v;
+                  closeModal();
+                  renderAll();
+                  showToast('Renamed to ' + v);
+              }},
+              { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+            ]
+          });
+        };
+      });
+    }
+  }
+
+  function cls(n){
+    if (n === null || n === undefined) return 'zero';
+    return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero');
+  }
+
+  /* ---------------- tabs ---------------- */
+
+  function switchTab(name){
+    document.querySelectorAll('.tab').forEach(function(t){
+      t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
+    });
+    ['table','chips','history'].forEach(function(n){
+      document.getElementById('panel-' + n).className = 'panel' + (n === name ? ' active' : '');
+    });
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------------- top-level render ---------------- */
+
+  function renderAll(){
+    renderAddForm();
+    renderPlayers();
+    renderSummary();
+    renderChips();
+    renderHistory();
+    save();
+  }
+
+  /* ---------------- wiring ---------------- */
+
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.onclick = function(){ switchTab(t.getAttribute('data-tab')); };
+  });
+
+  document.getElementById('add-btn').onclick = addPlayerFlow;
 
   document.getElementById('name-input').addEventListener('keydown', function(e){
-    if (e.key === 'Enter') document.getElementById('buyin-input').focus();
+    if (e.key === 'Enter'){
+      if (db.entryMode === 'chips') addPlayerFlow();
+      else document.getElementById('buyin-input').focus();
+    }
   });
   document.getElementById('buyin-input').addEventListener('keydown', function(e){
-    if (e.key === 'Enter') document.getElementById('add-btn').click();
+    if (e.key === 'Enter') addPlayerFlow();
   });
 
-  document.getElementById('reset-btn').onclick = function(){
-    if (state.players.length === 0) return;
-    if (confirm('Start a new game? This clears the current table.')){
-      state.players = [];
-      nextId = 1;
-      render();
-      showToast('New game started');
-    }
+  document.getElementById('end-btn').onclick = endGame;
+  document.getElementById('reset-btn').onclick = discardGame;
+
+  document.querySelectorAll('.mode-btn').forEach(function(b){
+    b.onclick = function(){
+      db.entryMode = b.getAttribute('data-mode');
+      renderAll();
+      showToast(db.entryMode === 'chips' ? 'Entering stacks as chip counts' : 'Entering stacks as dollar totals');
+    };
+  });
+
+  document.getElementById('denom-reset').onclick = function(){
+    db.colors = cloneDefaults();
+    renderAll();
+    showToast('Chip values restored');
   };
 
   document.getElementById('copy-btn').onclick = function(){
-    if (state.players.length === 0){
-      showToast('Nothing to copy yet');
-      return;
-    }
+    if (!db.game.players.length) return showToast('Nothing to copy yet');
     var lines = ['Poker Ledger'];
-    state.players.forEach(function(p){
-      var net = playerNet(p);
-      lines.push(p.name + ': in ' + fmt(playerTotal(p)) + (p.finalStack != null ? ', out ' + fmt(p.finalStack) + ', net ' + fmt(net) : ', still playing'));
+    db.game.players.forEach(function(p){
+      var net = netOf(p);
+      lines.push(nameOf(p.rid) + ': in ' + fmt(totalIn(p)) +
+        (net !== null ? ', out ' + fmt(p.finalStack) + ', net ' + fmt(net) : ', still playing'));
     });
     var text = lines.join('\n');
     if (navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){
-        showToast('Summary copied');
-      }).catch(function(){
-        showToast('Could not copy');
-      });
+      navigator.clipboard.writeText(text)
+        .then(function(){ showToast('Summary copied'); })
+        .catch(function(){ showToast('Could not copy'); });
     } else {
       showToast('Clipboard not available');
     }
   };
 
   load();
+  renderAll();
 })();
 </script>
 </body>
