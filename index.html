@@ -61,12 +61,13 @@
   }
   .tab{
     flex:1;
+    min-width:0;
     background:var(--ink-1);
     border:1px solid var(--line);
     color:var(--text-mid);
     border-radius:9px;
-    padding:11px 8px;
-    font-size:14px;
+    padding:11px 4px;
+    font-size:13px;
     font-weight:600;
     text-align:center;
   }
@@ -117,6 +118,7 @@
   input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 
   button{cursor:pointer;border:none;font-family:inherit;font-weight:600;}
+  button[disabled]{opacity:0.45;cursor:default;}
   .btn-primary{background:var(--felt-600);color:var(--text-hi);border-radius:7px;padding:11px 18px;font-size:14px;}
   .btn-primary:active{transform:scale(0.98);}
   .btn-ghost{background:transparent;border:1px solid var(--line);color:var(--text-mid);border-radius:7px;padding:9px 13px;font-size:13px;}
@@ -234,6 +236,77 @@
   .mode-btn small{display:block;font-weight:400;font-size:11px;color:var(--text-lo);margin-top:3px;}
   .mode-btn.active small{color:var(--text-mid);}
 
+  /* ---------- buy-in stack builder ---------- */
+  .plan-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+  .plan-row{
+    display:grid;
+    grid-template-columns:18px minmax(0,1fr) auto;
+    gap:10px;align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid rgba(51,58,52,0.5);
+  }
+  .plan-row:last-child{border-bottom:none;}
+  .plan-name{font-size:14px;font-weight:600;line-height:1.2;}
+  .plan-sub{font-size:11px;color:var(--text-lo);margin-top:3px;}
+  .plan-sub b{color:var(--gold);font-weight:700;}
+  .stepper{display:flex;align-items:center;gap:5px;}
+  .stepper button{
+    width:32px;height:36px;border-radius:7px;
+    background:var(--ink-2);border:1px solid var(--line);
+    color:var(--text-hi);font-size:17px;line-height:1;
+  }
+  .stepper button:active{background:var(--felt-700);border-color:var(--felt-500);}
+  .stepper input{width:54px;text-align:center;padding:8px 2px;font-size:15px;}
+  .plan-total{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-top:12px;padding-top:12px;border-top:1px solid var(--line);
+  }
+  .plan-total .lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
+  .plan-total .val{font-size:22px;font-weight:700;color:var(--gold);}
+  .plan-note{margin-top:7px;font-size:13px;line-height:1.45;}
+  .plan-note.ok{color:var(--felt-400);}
+  .plan-note.short{color:var(--text-mid);}
+  .plan-note.over{color:var(--red);}
+  .plan-bulk{
+    margin-top:12px;background:var(--ink-2);border-radius:8px;
+    padding:11px 13px;font-size:12.5px;color:var(--text-mid);line-height:1.65;
+  }
+  .plan-bulk b{color:var(--text-hi);}
+
+  /* ---------- seats tab ---------- */
+  .size-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;}
+  .size-btn{
+    background:var(--ink-2);border:1px solid var(--line);color:var(--text-mid);
+    border-radius:8px;padding:12px 0;font-size:15px;font-weight:700;
+  }
+  .size-btn.active{background:var(--felt-700);border-color:var(--felt-500);color:var(--text-hi);}
+  .seat-reveal{
+    text-align:center;padding:10px 0 2px;line-height:1;
+    font-size:68px;font-weight:800;color:var(--gold);
+    font-variant-numeric:tabular-nums;
+  }
+  .seat-reveal.idle{font-size:44px;color:var(--text-lo);}
+  .seat-sub{
+    text-align:center;font-size:13px;color:var(--text-mid);
+    margin:8px 0 14px;min-height:18px;
+  }
+  #seat-draw{width:100%;padding:16px;font-size:16px;}
+  #seat-draw[disabled]{opacity:0.5;}
+  .seat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+  .seat-tile{
+    background:var(--ink-2);border:1px solid var(--line);
+    border-radius:9px;padding:10px 3px;text-align:center;
+  }
+  .seat-tile .n{font-size:18px;font-weight:700;color:var(--text-lo);font-variant-numeric:tabular-nums;}
+  .seat-tile .who{
+    font-size:10px;color:var(--text-lo);margin-top:3px;line-height:1.25;min-height:13px;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .seat-tile.taken{background:var(--felt-800);border-color:var(--felt-500);}
+  .seat-tile.taken .n{color:var(--text-hi);}
+  .seat-tile.taken .who{color:var(--text-mid);}
+  .seat-tile.last{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim);}
+
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:430px;}
@@ -309,6 +382,7 @@
 <div class="tabs">
   <button class="tab active" data-tab="table">Table</button>
   <button class="tab" data-tab="chips">Chips</button>
+  <button class="tab" data-tab="seats">Seats</button>
   <button class="tab" data-tab="history">History</button>
 </div>
 
@@ -407,6 +481,71 @@
         </div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">Buy-in stack builder</div>
+      <div class="card">
+        <div class="plan-head">
+          <div>
+            <span class="field-label">Buy-in per player</span>
+            <input id="plan-target" type="number" inputmode="decimal" min="0" step="0.01" placeholder="50.00">
+          </div>
+          <div>
+            <span class="field-label">Stacks to build</span>
+            <input id="plan-stacks" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="8">
+          </div>
+        </div>
+        <div id="plan-list"></div>
+        <div class="plan-total">
+          <span class="lbl">One stack</span>
+          <span class="val" id="plan-value">$0.00</span>
+        </div>
+        <div class="plan-note" id="plan-note"></div>
+        <div class="plan-bulk" id="plan-bulk" style="display:none;"></div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-ghost" id="plan-clear">Clear counts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SEATS ============ -->
+  <div class="panel" id="panel-seats">
+    <div class="section">
+      <div class="section-title">Table size</div>
+      <div class="card">
+        <div class="size-grid" id="size-grid"></div>
+        <div class="hint" style="margin-top:12px;">
+          Seats are drawn from 1 to this number. Shrinking the table frees any seat above it.
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Draw a seat</div>
+      <div class="card">
+        <div class="seat-reveal idle" id="seat-reveal">&mdash;</div>
+        <div class="seat-sub" id="seat-sub"></div>
+        <button class="btn-gold" id="seat-draw">Draw seat</button>
+        <div class="toolbar" style="margin-top:10px;">
+          <button class="btn-ghost" id="seat-undo">Undo last</button>
+          <button class="btn-ghost" id="seat-reset">Clear seats</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">
+        <span>Seat map</span>
+        <span id="seat-left" style="font-size:11px;"></span>
+      </div>
+      <div class="card">
+        <div class="seat-grid" id="seat-grid"></div>
+        <div class="hint" style="margin-top:12px;">
+          Tap a seat to put a name on it, free it up, or hand it out without drawing.
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ HISTORY ============ -->
@@ -463,6 +602,8 @@
     entryMode: 'total',  // 'total' | 'chips'
     game: { players: [] },// { rid, buyins:[num], finalStack:num|null }
     history: [],         // { id, endedAt, entries:[{rid,name,totalIn,finalStack,net}] }
+    plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
+    seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
     nextRosterId: 1,
     nextGameId: 1
   };
@@ -493,6 +634,23 @@
     return v % 1 === 0 ? '$' + v : '$' + v.toFixed(2);
   }
 
+  function clampSize(n){
+    n = parseInt(n, 10);
+    if (isNaN(n)) return 8;
+    return Math.max(2, Math.min(10, n));
+  }
+
+  // Unbiased pick of 0..n-1, crypto-backed where available so draws feel fair.
+  function rand(n){
+    if (window.crypto && window.crypto.getRandomValues){
+      var a = new Uint32Array(1);
+      var limit = Math.floor(4294967296 / n) * n;
+      do { window.crypto.getRandomValues(a); } while (a[0] >= limit);
+      return a[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  }
+
   function escapeHtml(s){
     return String(s).replace(/[&<>"']/g, function(c){
       return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c];
@@ -521,10 +679,22 @@
         db.history     = p.history || [];
         db.nextRosterId= p.nextRosterId || 1;
         db.nextGameId  = p.nextGameId || 1;
+        if (p.plan)  db.plan  = p.plan;
+        if (p.seats) db.seats = p.seats;
       }catch(e){}
     } else {
       migrateOld();
     }
+
+    // Normalise the two newer blocks so a hand-edited or older save can't break them.
+    if (!db.plan || typeof db.plan !== 'object') db.plan = { target:50, stacks:8, counts:{} };
+    if (!db.plan.counts || typeof db.plan.counts !== 'object') db.plan.counts = {};
+    if (!db.seats || typeof db.seats !== 'object') db.seats = { size:8, taken:[], last:null };
+    if (!Array.isArray(db.seats.taken)) db.seats.taken = [];
+    db.seats.size = clampSize(db.seats.size);
+    db.seats.taken = db.seats.taken.filter(function(t){
+      return t && t.seat >= 1 && t.seat <= db.seats.size;
+    });
 
     if (!db.colors || !db.colors.length) db.colors = cloneDefaults();
     // Guard against a saved file from an older shape.
@@ -1179,8 +1349,300 @@
         var key = inp.getAttribute('data-denom');
         var v = parseFloat(inp.value);
         db.colors.forEach(function(c){ if (c.key === key) c.value = isNaN(v) ? 0 : v; });
+        updatePlanTotals();
         save();
       };
+    });
+  }
+
+  /* ---------------- buy-in stack builder ---------------- */
+
+  function planCount(key){
+    var n = parseInt(db.plan.counts[key], 10);
+    return (isNaN(n) || n < 0) ? 0 : n;
+  }
+
+  function setPlanCount(key, n){
+    db.plan.counts[key] = Math.max(0, n);
+    save();
+  }
+
+  function renderPlan(){
+    document.getElementById('plan-target').value =
+      (db.plan.target === '' || db.plan.target === null || db.plan.target === undefined) ? '' : db.plan.target;
+    document.getElementById('plan-stacks').value =
+      (db.plan.stacks === '' || db.plan.stacks === null || db.plan.stacks === undefined) ? '' : db.plan.stacks;
+
+    var list = document.getElementById('plan-list');
+    list.innerHTML = '';
+
+    db.colors.forEach(function(c){
+      var row = document.createElement('div');
+      row.className = 'plan-row';
+      row.innerHTML =
+        '<div class="chip-dot" style="margin:0;background:' + c.css + ';"></div>' +
+        '<div>' +
+          '<div class="plan-name">' + escapeHtml(c.label) + '</div>' +
+          '<div class="plan-sub" id="plansub-' + c.key + '"></div>' +
+        '</div>' +
+        '<div class="stepper">' +
+          '<button type="button" data-plan-step="' + c.key + '" data-dir="-1">&minus;</button>' +
+          '<input type="number" inputmode="numeric" min="0" step="1" placeholder="0" ' +
+            'data-plan="' + c.key + '" value="' + (planCount(c.key) || '') + '">' +
+          '<button type="button" data-plan-step="' + c.key + '" data-dir="1">+</button>' +
+        '</div>';
+      list.appendChild(row);
+    });
+
+    document.querySelectorAll('[data-plan]').forEach(function(inp){
+      inp.oninput = function(){
+        var n = parseInt(inp.value, 10);
+        setPlanCount(inp.getAttribute('data-plan'), isNaN(n) ? 0 : n);
+        updatePlanTotals();
+      };
+    });
+
+    document.querySelectorAll('[data-plan-step]').forEach(function(btn){
+      btn.onclick = function(){
+        var key = btn.getAttribute('data-plan-step');
+        var dir = Number(btn.getAttribute('data-dir'));
+        var n = Math.max(0, planCount(key) + dir);
+        setPlanCount(key, n);
+        var inp = document.querySelector('[data-plan="' + key + '"]');
+        if (inp) inp.value = n || '';
+        updatePlanTotals();
+      };
+    });
+
+    updatePlanTotals();
+  }
+
+  function updatePlanTotals(){
+    var cents = 0, chips = 0, parts = [];
+
+    db.colors.forEach(function(c){
+      var n = planCount(c.key);
+      var sub = Math.round(c.value * 100) * n;
+      cents += sub;
+      chips += n;
+      if (n > 0) parts.push({ label: c.label, n: n });
+      var el = document.getElementById('plansub-' + c.key);
+      if (el){
+        el.innerHTML = denomLabel(c.value) + ' each &middot; <b>' + fmt(sub / 100) + '</b>';
+      }
+    });
+
+    var value = cents / 100;
+    document.getElementById('plan-value').textContent = fmt(value);
+
+    var note = document.getElementById('plan-note');
+    var target = parseFloat(db.plan.target);
+    if (isNaN(target) || target <= 0){
+      note.className = 'plan-note short';
+      note.textContent = chips
+        ? chips + ' chip' + (chips === 1 ? '' : 's') + ' per stack. Set a buy-in to track the difference.'
+        : 'Set a buy-in, then count up chips until the stack matches it.';
+    } else {
+      var diff = round2(value - target);
+      var tail = ' &middot; ' + chips + ' chip' + (chips === 1 ? '' : 's') + ' per stack';
+      if (Math.abs(diff) < 0.005){
+        note.className = 'plan-note ok';
+        note.innerHTML = 'Exactly the ' + fmt(target) + ' buy-in' + tail + '.';
+      } else if (diff < 0){
+        note.className = 'plan-note short';
+        note.innerHTML = '<b>' + fmt(-diff) + '</b> short of the ' + fmt(target) + ' buy-in' + tail + '.';
+      } else {
+        note.className = 'plan-note over';
+        note.innerHTML = '<b>' + fmt(diff) + '</b> over the ' + fmt(target) + ' buy-in' + tail + '.';
+      }
+    }
+
+    var bulk = document.getElementById('plan-bulk');
+    var stacks = parseInt(db.plan.stacks, 10);
+    if (!isNaN(stacks) && stacks > 1 && chips > 0){
+      var need = parts.map(function(p){
+        return '<b>' + (p.n * stacks) + '</b> ' + escapeHtml(p.label.toLowerCase());
+      }).join(' &middot; ');
+      bulk.style.display = 'block';
+      bulk.innerHTML =
+        'For <b>' + stacks + ' stacks</b> (' + fmt(value * stacks) + ' on the table) you need ' + need +
+        ' &mdash; <b>' + (chips * stacks) + '</b> chips in all.';
+    } else {
+      bulk.style.display = 'none';
+      bulk.innerHTML = '';
+    }
+  }
+
+  /* ---------------- seat generator ---------------- */
+
+  var seatDrawing = false;
+
+  function seatEntry(n){
+    for (var i = 0; i < db.seats.taken.length; i++){
+      if (db.seats.taken[i].seat === n) return db.seats.taken[i];
+    }
+    return null;
+  }
+
+  function openSeats(){
+    var out = [];
+    for (var n = 1; n <= db.seats.size; n++){
+      if (!seatEntry(n)) out.push(n);
+    }
+    return out;
+  }
+
+  function renderSeats(){
+    var sizeGrid = document.getElementById('size-grid');
+    var sh = '';
+    for (var n = 2; n <= 10; n++){
+      sh += '<button class="size-btn' + (n === db.seats.size ? ' active' : '') +
+            '" data-size="' + n + '">' + n + '</button>';
+    }
+    sizeGrid.innerHTML = sh;
+    sizeGrid.querySelectorAll('[data-size]').forEach(function(btn){
+      btn.onclick = function(){ setTableSize(Number(btn.getAttribute('data-size'))); };
+    });
+
+    var grid = document.getElementById('seat-grid');
+    var gh = '';
+    for (var s = 1; s <= db.seats.size; s++){
+      var e = seatEntry(s);
+      gh += '<button class="seat-tile' + (e ? ' taken' : '') +
+              (db.seats.last === s ? ' last' : '') + '" data-seat="' + s + '">' +
+              '<div class="n">' + s + '</div>' +
+              '<div class="who">' + (e && e.name ? escapeHtml(e.name) : (e ? 'taken' : '')) + '</div>' +
+            '</button>';
+    }
+    grid.innerHTML = gh;
+    // 4 across for a 6–8 handed table, 5 across for 9–10, so rows come out even.
+    grid.style.gridTemplateColumns = 'repeat(' + (db.seats.size <= 8 ? 4 : 5) + ',1fr)';
+    grid.querySelectorAll('[data-seat]').forEach(function(btn){
+      btn.onclick = function(){ seatTapped(Number(btn.getAttribute('data-seat'))); };
+    });
+
+    var left = openSeats().length;
+    document.getElementById('seat-left').textContent =
+      db.seats.taken.length + ' of ' + db.seats.size + ' taken';
+
+    if (!seatDrawing){
+      var reveal = document.getElementById('seat-reveal');
+      var sub = document.getElementById('seat-sub');
+      var last = db.seats.last !== null && db.seats.last !== undefined ? seatEntry(db.seats.last) : null;
+      if (last){
+        reveal.className = 'seat-reveal';
+        reveal.textContent = last.seat;
+        sub.innerHTML = (last.name ? escapeHtml(last.name) + ' &middot; ' : '') +
+          (left ? left + ' seat' + (left === 1 ? '' : 's') + ' still open' : 'table is full');
+      } else {
+        reveal.className = 'seat-reveal idle';
+        reveal.innerHTML = '&mdash;';
+        sub.textContent = left ? 'Hit draw and the table decides.' : 'Every seat is taken.';
+      }
+
+      var drawBtn = document.getElementById('seat-draw');
+      drawBtn.disabled = left === 0;
+      drawBtn.textContent = left === 0 ? 'Table is full' : 'Draw seat';
+    }
+
+    document.getElementById('seat-undo').disabled = db.seats.taken.length === 0;
+    document.getElementById('seat-reset').disabled = db.seats.taken.length === 0;
+  }
+
+  function setTableSize(n){
+    n = clampSize(n);
+    var dropped = db.seats.taken.filter(function(t){ return t.seat > n; });
+    db.seats.size = n;
+    if (dropped.length){
+      db.seats.taken = db.seats.taken.filter(function(t){ return t.seat <= n; });
+      if (db.seats.last > n) db.seats.last = null;
+      showToast('Freed ' + dropped.length + ' seat' + (dropped.length === 1 ? '' : 's') + ' above ' + n);
+    }
+    save();
+    renderSeats();
+  }
+
+  function drawSeat(){
+    if (seatDrawing) return;
+    var open = openSeats();
+    if (!open.length) return showToast('Every seat is taken');
+
+    var pick = open[rand(open.length)];
+    var reveal = document.getElementById('seat-reveal');
+    var sub = document.getElementById('seat-sub');
+    var btn = document.getElementById('seat-draw');
+
+    seatDrawing = true;
+    btn.disabled = true;
+    reveal.className = 'seat-reveal';
+    sub.textContent = 'Shuffling…';
+
+    var ticks = 0;
+    var timer = setInterval(function(){
+      reveal.textContent = open[rand(open.length)];
+      if (++ticks >= 11){
+        clearInterval(timer);
+        reveal.textContent = pick;
+        db.seats.taken.push({ seat: pick, name: '' });
+        db.seats.last = pick;
+        seatDrawing = false;
+        btn.disabled = false;
+        save();
+        renderSeats();
+        showToast('Seat ' + pick);
+      }
+    }, 55);
+  }
+
+  function seatTapped(n){
+    if (seatDrawing) return;
+    var e = seatEntry(n);
+
+    if (!e){
+      openModal({
+        title: 'Seat ' + n + ' is open',
+        body: 'Hand this seat out without drawing for it. A name is optional.' +
+              '<input type="text" id="seat-name-input" maxlength="24" placeholder="Name (optional)" autocomplete="off">',
+        focus: 'seat-name-input',
+        buttons: [
+          { label: 'Take seat ' + n, cls:'btn-primary', onClick: function(){
+              var v = document.getElementById('seat-name-input').value.trim();
+              db.seats.taken.push({ seat: n, name: v });
+              db.seats.last = n;
+              closeModal();
+              save();
+              renderSeats();
+              showToast(v ? v + ' in seat ' + n : 'Seat ' + n + ' taken');
+          }},
+          { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+        ]
+      });
+      return;
+    }
+
+    openModal({
+      title: 'Seat ' + n,
+      body: 'Put a name on this seat so the map reads at a glance.' +
+            '<input type="text" id="seat-name-input" maxlength="24" placeholder="Name" ' +
+            'value="' + escapeHtml(e.name || '') + '" autocomplete="off">',
+      focus: 'seat-name-input',
+      buttons: [
+        { label: 'Save name', cls:'btn-primary', onClick: function(){
+            e.name = document.getElementById('seat-name-input').value.trim();
+            closeModal();
+            save();
+            renderSeats();
+        }},
+        { label: 'Free this seat', cls:'btn-danger', onClick: function(){
+            db.seats.taken = db.seats.taken.filter(function(t){ return t.seat !== n; });
+            if (db.seats.last === n) db.seats.last = null;
+            closeModal();
+            save();
+            renderSeats();
+            showToast('Seat ' + n + ' is open again');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
     });
   }
 
@@ -1339,7 +1801,7 @@
     document.querySelectorAll('.tab').forEach(function(t){
       t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
     });
-    ['table','chips','history'].forEach(function(n){
+    ['table','chips','seats','history'].forEach(function(n){
       document.getElementById('panel-' + n).className = 'panel' + (n === name ? ' active' : '');
     });
     window.scrollTo(0, 0);
@@ -1352,6 +1814,8 @@
     renderPlayers();
     renderSummary();
     renderChips();
+    renderPlan();
+    renderSeats();
     renderHistory();
     save();
   }
@@ -1384,6 +1848,55 @@
       showToast(db.entryMode === 'chips' ? 'Entering stacks as chip counts' : 'Entering stacks as dollar totals');
     };
   });
+
+  document.getElementById('plan-target').oninput = function(){
+    db.plan.target = this.value === '' ? '' : parseFloat(this.value);
+    updatePlanTotals();
+    save();
+  };
+
+  document.getElementById('plan-stacks').oninput = function(){
+    db.plan.stacks = this.value === '' ? '' : parseInt(this.value, 10);
+    updatePlanTotals();
+    save();
+  };
+
+  document.getElementById('plan-clear').onclick = function(){
+    db.plan.counts = {};
+    save();
+    renderPlan();
+    showToast('Stack cleared');
+  };
+
+  document.getElementById('seat-draw').onclick = drawSeat;
+
+  document.getElementById('seat-undo').onclick = function(){
+    if (seatDrawing || !db.seats.taken.length) return;
+    var gone = db.seats.taken.pop();
+    db.seats.last = db.seats.taken.length ? db.seats.taken[db.seats.taken.length - 1].seat : null;
+    save();
+    renderSeats();
+    showToast('Seat ' + gone.seat + ' is open again');
+  };
+
+  document.getElementById('seat-reset').onclick = function(){
+    if (seatDrawing || !db.seats.taken.length) return;
+    openModal({
+      title: 'Clear every seat?',
+      body: 'Opens all ' + db.seats.size + ' seats so you can draw the table again from scratch.',
+      buttons: [
+        { label: 'Clear seats', cls:'btn-danger', onClick: function(){
+            db.seats.taken = [];
+            db.seats.last = null;
+            closeModal();
+            save();
+            renderSeats();
+            showToast('Seats cleared');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  };
 
   document.getElementById('denom-reset').onclick = function(){
     db.colors = cloneDefaults();
