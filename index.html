@@ -389,6 +389,13 @@
     z-index:200;max-width:90vw;text-align:center;
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
+
+  /* ---------- pay tab ---------- */
+  .venmo-qr{
+    background:#fff;border-radius:14px;padding:16px;
+    display:inline-block;line-height:0;
+  }
+  .venmo-qr img{width:220px;height:220px;max-width:100%;display:block;}
 </style>
 </head>
 <body>
@@ -403,6 +410,7 @@
   <button class="tab" data-tab="chips">Chips</button>
   <button class="tab" data-tab="seats">Seats</button>
   <button class="tab" data-tab="history">History</button>
+  <button class="tab" data-tab="pay">Pay</button>
 </div>
 
 <div class="wrap">
@@ -595,6 +603,36 @@
     </div>
   </div>
 
+  <!-- ============ PAY ============ -->
+  <div class="panel" id="panel-pay">
+    <div class="section">
+      <div class="section-title">Your Venmo</div>
+      <div class="card">
+        <span class="field-label">Venmo username</span>
+        <input id="venmo-input" type="text" placeholder="yourname" maxlength="40" autocomplete="off">
+        <div class="hint" style="margin-top:10px;">
+          Saved on this device only &mdash; used to build the link and QR code below.
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Scan to pay</div>
+      <div class="card" style="text-align:center;">
+        <div id="venmo-qr-wrap"></div>
+        <div class="toolbar" style="margin-top:16px;">
+          <button class="btn-gold" id="venmo-open">Open Venmo</button>
+        </div>
+        <div class="toolbar" style="margin-top:9px;">
+          <button class="btn-ghost" id="venmo-copy">Copy link</button>
+        </div>
+        <div class="hint" style="margin-top:14px;">
+          Hand them your phone to scan, or tap Open Venmo if you're paying from this device.
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="modal-back" id="modal-back">
@@ -630,6 +668,7 @@
     history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
+    venmoUser: 'kevinpark4',
     nextRosterId: 1,
     nextGameId: 1
   };
@@ -707,10 +746,13 @@
         db.nextGameId  = p.nextGameId || 1;
         if (p.plan)  db.plan  = p.plan;
         if (p.seats) db.seats = p.seats;
+        if (typeof p.venmoUser === 'string') db.venmoUser = p.venmoUser;
       }catch(e){}
     } else {
       migrateOld();
     }
+
+    if (typeof db.venmoUser !== 'string') db.venmoUser = 'kevinpark4';
 
     // Normalise the two newer blocks so a hand-edited or older save can't break them.
     if (!db.plan || typeof db.plan !== 'object') db.plan = { target:50, stacks:8, counts:{} };
@@ -2025,13 +2067,55 @@
     };
   }
 
+  /* ---------------- render: pay tab ---------------- */
+
+  // A QR pointing at your own public Venmo profile — you hand your phone to
+  // whoever owes you, they scan with their camera, no app-switching on your end.
+  function renderPay(){
+    var input = document.getElementById('venmo-input');
+    if (document.activeElement !== input) input.value = db.venmoUser || '';
+
+    var wrap = document.getElementById('venmo-qr-wrap');
+    var openBtn = document.getElementById('venmo-open');
+    var copyBtn = document.getElementById('venmo-copy');
+    var user = (db.venmoUser || '').trim().replace(/^@/, '');
+
+    if (!user){
+      wrap.innerHTML = '<div class="hint">Enter your Venmo username above to get a scannable code.</div>';
+      openBtn.disabled = true;
+      copyBtn.disabled = true;
+      openBtn.onclick = null;
+      copyBtn.onclick = null;
+      return;
+    }
+
+    var url = 'https://venmo.com/u/' + encodeURIComponent(user);
+    var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=12&data=' + encodeURIComponent(url);
+    wrap.innerHTML =
+      '<div class="venmo-qr"><img src="' + qrSrc + '" width="220" height="220" alt="Venmo QR code"></div>' +
+      '<div class="hint" style="margin-top:12px;">@' + escapeHtml(user) + '</div>';
+
+    openBtn.disabled = false;
+    copyBtn.disabled = false;
+    openBtn.onclick = function(){ window.open(url, '_blank'); };
+    copyBtn.onclick = function(){
+      if (navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url)
+          .then(function(){ showToast('Venmo link copied'); })
+          .catch(function(){ showToast('Could not copy'); });
+      } else {
+        showToast('Clipboard not available');
+      }
+    };
+  }
+
   /* ---------------- tabs ---------------- */
 
   function switchTab(name){
     document.querySelectorAll('.tab').forEach(function(t){
       t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
     });
-    ['table','chips','seats','history'].forEach(function(n){
+    ['table','chips','seats','history','pay'].forEach(function(n){
       document.getElementById('panel-' + n).className = 'panel' + (n === name ? ' active' : '');
     });
     window.scrollTo(0, 0);
@@ -2047,6 +2131,7 @@
     renderPlan();
     renderSeats();
     renderHistory();
+    renderPay();
     save();
   }
 
@@ -2135,6 +2220,16 @@
     renderAll();
     showToast('Chip values restored');
   };
+
+  var venmoInput = document.getElementById('venmo-input');
+  venmoInput.addEventListener('input', function(){
+    db.venmoUser = this.value;
+    save();
+  });
+  venmoInput.addEventListener('blur', renderPay);
+  venmoInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') this.blur();
+  });
 
   document.getElementById('copy-btn').onclick = function(){
     if (!db.game.players.length) return showToast('Nothing to copy yet');
