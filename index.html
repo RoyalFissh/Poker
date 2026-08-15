@@ -1785,21 +1785,21 @@
       rows.sort(function(a,b){ return b.s.total - a.s.total; });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Games</th><th>Rebuys</th><th>Total buy-in</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              '<th>Player</th><th>Net</th><th>Games</th><th>Rebuys</th><th>Total buy-in</th><th>Avg</th><th>Best</th><th>Worst</th>' +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
                '<td>' + escapeHtml(x.r.name) + '</td>' +
+               '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
                '<td>' + x.s.sessions + '</td>' +
                '<td>' + x.s.rebuys + '</td>' +
                '<td>' + fmt(x.s.totalBuyin) + '</td>' +
-               '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
                '<td class="' + cls(x.s.avg) + '">' + fmt(x.s.avg) + '</td>' +
                '<td class="' + cls(x.s.best) + '">' + fmt(x.s.best || 0) + '</td>' +
                '<td class="' + cls(x.s.worst) + '">' + fmt(x.s.worst || 0) + '</td>' +
              '</tr>';
       });
-      h += '</tbody></table></div>';
+      h += '</tbody></table></div><div class="hint" style="margin-top:10px;">Swipe the table sideways for Avg / Best / Worst.</div>';
       card.innerHTML = h;
     }
 
