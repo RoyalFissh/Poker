@@ -176,9 +176,15 @@
   }
   .field-label .gold{color:var(--gold-dim);}
   .stack-block{margin-top:4px;}
-  .stack-block.total-mode{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;}
   .stack-block input.stack-input{border-color:var(--gold-dim);}
   .stack-block input.stack-input:focus{border-color:var(--gold);}
+  .stack-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+  .stack-mode-toggle{display:flex;gap:5px;}
+  .stack-mode-btn{
+    background:var(--ink-2);border:1px solid var(--line);color:var(--text-mid);
+    border-radius:6px;padding:5px 11px;font-size:11px;font-weight:600;
+  }
+  .stack-mode-btn.active{background:var(--felt-700);border-color:var(--felt-500);color:var(--text-hi);}
   .row-actions{display:flex;gap:8px;margin-top:10px;}
   .row-actions button{flex:1;}
   .player-footer{
@@ -233,14 +239,6 @@
   .denom-row:last-child{border-bottom:none;}
   .denom-name{font-size:14px;font-weight:600;}
   .denom-row input{text-align:right;}
-  .mode-toggle{display:flex;gap:8px;margin-top:4px;}
-  .mode-btn{
-    flex:1;background:var(--ink-2);border:1px solid var(--line);
-    color:var(--text-mid);border-radius:8px;padding:12px 8px;font-size:13px;
-  }
-  .mode-btn.active{background:var(--felt-700);border-color:var(--felt-500);color:var(--text-hi);}
-  .mode-btn small{display:block;font-weight:400;font-size:11px;color:var(--text-lo);margin-top:3px;}
-  .mode-btn.active small{color:var(--text-mid);}
 
   /* ---------- buy-in stack builder ---------- */
   .plan-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
@@ -315,7 +313,8 @@
 
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:620px;}
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:660px;}
+  table.stats th{white-space:nowrap;}
   table.stats th{
     text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
     color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
@@ -427,7 +426,6 @@
             <input id="buyin-input" type="number" inputmode="decimal" placeholder="Buy-in $" min="0" step="0.01">
           </div>
         </div>
-        <div id="add-chip-wrap" style="display:none;margin-top:10px;"></div>
         <div class="add-actions">
           <button class="btn-primary" id="add-btn">Add player</button>
         </div>
@@ -478,30 +476,12 @@
   <!-- ============ CHIPS ============ -->
   <div class="panel" id="panel-chips">
     <div class="section">
-      <div class="section-title">How stacks get entered</div>
-      <div class="card">
-        <div class="mode-toggle">
-          <button class="mode-btn" id="mode-total" data-mode="total">
-            Dollar total<small>Fastest — type one number</small>
-          </button>
-          <button class="mode-btn" id="mode-chips" data-mode="chips">
-            Chip counts<small>App does the math</small>
-          </button>
-        </div>
-        <div class="hint" style="margin-top:12px;">
-          Applies to the whole game &mdash; buy-ins, rebuys and final stacks. Switch anytime;
-          amounts already entered are kept.
-        </div>
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Chip values</div>
       <div class="card">
         <div id="denom-list"></div>
         <div class="hint" style="margin-top:12px;">
-          Set once and it sticks. Used to convert chip counts into dollars, and to check a stack
-          against what you counted.
+          Set once and it sticks. Buy-ins are always entered in dollars; these values are what
+          convert final-stack chip counts into dollars on the Table tab.
         </div>
         <div class="toolbar" style="margin-top:14px;">
           <button class="btn-ghost" id="denom-reset">Restore defaults</button>
@@ -601,6 +581,22 @@
       <div class="section-title">Roster</div>
       <div class="card" id="roster-card"></div>
     </div>
+
+    <div class="section">
+      <div class="section-title">Backup &amp; restore</div>
+      <div class="card">
+        <div class="hint">
+          Everything is stored on this device only, inside whichever app you're using right now.
+          A Safari tab and a home-screen icon for the same link keep <strong>separate</strong> data
+          on iOS &mdash; so pick one and stick with it, and use this to move data over or keep a
+          copy just in case.
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-ghost" id="backup-export">Export data</button>
+          <button class="btn-ghost" id="backup-import">Import data</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ PAY ============ -->
@@ -663,8 +659,8 @@
   var db = {
     roster: [],          // { id, name }
     colors: null,        // [{ key,label,css,value }]
-    entryMode: 'total',  // 'total' | 'chips'
-    game: { players: [] },// { rid, buyins:[num], finalStack:num|null }
+    // { rid, buyins:[num] (always dollars), finalStack:num|null, stackMode:'chips'|'total', stackCounts, paid }
+    game: { players: [] },
     history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
@@ -739,7 +735,6 @@
         var p = JSON.parse(raw);
         db.roster      = p.roster || [];
         db.colors      = p.colors || null;
-        db.entryMode   = p.entryMode === 'chips' ? 'chips' : 'total';
         db.game        = p.game && p.game.players ? p.game : { players: [] };
         db.history     = p.history || [];
         db.nextRosterId= p.nextRosterId || 1;
@@ -752,9 +747,14 @@
       migrateOld();
     }
 
+    normalizeDb();
+  }
+
+  // Guards every field against a hand-edited, imported, or older-shape save so
+  // a bad blob can't crash the app. Shared by load() and the Import flow.
+  function normalizeDb(){
     if (typeof db.venmoUser !== 'string') db.venmoUser = 'kevinpark4';
 
-    // Normalise the two newer blocks so a hand-edited or older save can't break them.
     if (!db.plan || typeof db.plan !== 'object') db.plan = { target:50, stacks:8, counts:{} };
     if (!db.plan.counts || typeof db.plan.counts !== 'object') db.plan.counts = {};
     if (!db.seats || typeof db.seats !== 'object') db.seats = { size:8, taken:[], last:null };
@@ -775,12 +775,16 @@
         value: typeof c.value === 'number' ? c.value : d.value
       };
     });
+    if (!Array.isArray(db.roster)) db.roster = [];
+    if (!Array.isArray(db.history)) db.history = [];
+    if (!db.game || !Array.isArray(db.game.players)) db.game = { players: [] };
     if (db.nextRosterId <= db.roster.length){
       db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
     }
 
     db.game.players.forEach(function(p){
       if (typeof p.paid !== 'boolean') p.paid = false;
+      if (p.stackMode !== 'total' && p.stackMode !== 'chips') p.stackMode = 'chips';
     });
   }
 
@@ -938,12 +942,6 @@
     if (te) te.textContent = fmt(d);
   }
 
-  function clearChipGrid(ns){
-    document.querySelectorAll('[data-chip="' + ns + '"]').forEach(function(inp){ inp.value = ''; });
-    var te = document.getElementById('chiptotal-' + ns);
-    if (te) te.textContent = fmt(0);
-  }
-
   /* ---------------- game math ---------------- */
 
   function totalIn(p){
@@ -980,21 +978,6 @@
 
   /* ---------------- render: table tab ---------------- */
 
-  function renderAddForm(){
-    var amtWrap = document.getElementById('add-amt-wrap');
-    var chipWrap = document.getElementById('add-chip-wrap');
-    if (db.entryMode === 'chips'){
-      amtWrap.style.display = 'none';
-      chipWrap.style.display = 'block';
-      chipWrap.innerHTML = '<span class="field-label">Buy-in chips</span>' + chipGridHtml('add', {});
-      bindChipGrid('add');
-    } else {
-      amtWrap.style.display = 'block';
-      chipWrap.style.display = 'none';
-      chipWrap.innerHTML = '';
-    }
-  }
-
   function renderPlayers(){
     var list = document.getElementById('players-list');
     var empty = document.getElementById('empty-state');
@@ -1018,28 +1001,25 @@
       var netClass = net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'));
       var netText  = net === null ? 'Awaiting cash-out' : fmt(net);
 
-      var stackHtml;
-      if (db.entryMode === 'chips'){
-        stackHtml =
-          '<div class="stack-block">' +
-            '<span class="field-label"><span class="gold">&#9679;</span> Final stack &mdash; chip counts</span>' +
-            chipGridHtml('p' + p.rid, p.stackCounts || {}) +
+      var stackMode = p.stackMode === 'total' ? 'total' : 'chips';
+      var stackHead =
+        '<div class="stack-head">' +
+          '<span class="field-label"><span class="gold">&#9679;</span> Final stack</span>' +
+          '<div class="stack-mode-toggle">' +
+            '<button type="button" class="stack-mode-btn' + (stackMode === 'chips' ? ' active' : '') +
+              '" data-stackmode="chips" data-rid="' + p.rid + '">Chips</button>' +
+            '<button type="button" class="stack-mode-btn' + (stackMode === 'total' ? ' active' : '') +
+              '" data-stackmode="total" data-rid="' + p.rid + '">$</button>' +
+          '</div>' +
+        '</div>';
+
+      var stackHtml = stackMode === 'chips'
+        ? '<div class="stack-block">' + stackHead + chipGridHtml('p' + p.rid, p.stackCounts || {}) + '</div>'
+        : '<div class="stack-block">' + stackHead +
+            '<input class="stack-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" ' +
+              'data-stack="' + p.rid + '" value="' +
+              (p.finalStack === null || p.finalStack === undefined ? '' : p.finalStack) + '">' +
           '</div>';
-      } else {
-        stackHtml =
-          '<div class="stack-block total-mode">' +
-            '<div>' +
-              '<span class="field-label">Total in</span>' +
-              '<input type="text" value="' + fmt(tin) + '" disabled>' +
-            '</div>' +
-            '<div>' +
-              '<span class="field-label"><span class="gold">&#9679;</span> Final stack</span>' +
-              '<input class="stack-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" ' +
-                'data-stack="' + p.rid + '" value="' +
-                (p.finalStack === null || p.finalStack === undefined ? '' : p.finalStack) + '">' +
-            '</div>' +
-          '</div>';
-      }
 
       row.innerHTML =
         '<div class="player-top">' +
@@ -1077,6 +1057,22 @@
       btn.onclick = function(){ promptRebuy(Number(btn.getAttribute('data-rebuy'))); };
     });
 
+    // Per-player final-stack entry mode: chip counts (default) or a dollar total.
+    document.querySelectorAll('[data-stackmode]').forEach(function(btn){
+      btn.onclick = function(){
+        var rid = Number(btn.getAttribute('data-rid'));
+        var mode = btn.getAttribute('data-stackmode');
+        var p = findPlayer(rid);
+        if (!p || p.stackMode === mode) return;
+        p.stackMode = mode;
+        p.finalStack = null;
+        p.stackCounts = {};
+        renderPlayers();
+        renderSummary();
+        save();
+      };
+    });
+
     // Dollar-total stack inputs
     document.querySelectorAll('[data-stack]').forEach(function(inp){
       inp.oninput = function(){
@@ -1092,19 +1088,18 @@
     });
 
     // Chip-count stack grids
-    if (db.entryMode === 'chips'){
-      db.game.players.forEach(function(p){
-        bindChipGrid('p' + p.rid, function(dollars){
-          var counts = readChipGrid('p' + p.rid);
-          var any = Object.keys(counts).some(function(k){ return counts[k] !== '' && counts[k] !== null; });
-          p.stackCounts = counts;
-          p.finalStack = any ? dollars : null;
-          updateNetInline(p.rid);
-          renderSummary();
-          save();
-        });
+    db.game.players.forEach(function(p){
+      if (p.stackMode === 'total') return;
+      bindChipGrid('p' + p.rid, function(dollars){
+        var counts = readChipGrid('p' + p.rid);
+        var any = Object.keys(counts).some(function(k){ return counts[k] !== '' && counts[k] !== null; });
+        p.stackCounts = counts;
+        p.finalStack = any ? dollars : null;
+        updateNetInline(p.rid);
+        renderSummary();
+        save();
       });
-    }
+    });
   }
 
   function findPlayer(rid){
@@ -1207,7 +1202,6 @@
   /* ---------------- add player + duplicate names ---------------- */
 
   function readBuyin(){
-    if (db.entryMode === 'chips') return chipsToDollars(readChipGrid('add'));
     var v = parseFloat(document.getElementById('buyin-input').value);
     return isNaN(v) ? 0 : v;
   }
@@ -1224,11 +1218,7 @@
     }
 
     if (!name) return fail('Enter a player name');
-    if (buyin <= 0){
-      return fail(db.entryMode === 'chips'
-        ? 'Enter the chips this player is buying in with'
-        : 'Enter a buy-in amount greater than $0');
-    }
+    if (buyin <= 0) return fail('Enter a buy-in amount greater than $0');
     errEl.style.display = 'none';
 
     var existing = rosterByName(name);
@@ -1324,13 +1314,15 @@
 
   function clearAddForm(){
     document.getElementById('name-input').value = '';
-    if (db.entryMode === 'chips') clearChipGrid('add');
-    else document.getElementById('buyin-input').value = '';
+    document.getElementById('buyin-input').value = '';
     document.getElementById('add-error').style.display = 'none';
   }
 
   function commitPlayer(rid, buyin){
-    db.game.players.push({ rid: rid, buyins: [round2(buyin)], finalStack: null, stackCounts: {}, paid: false });
+    db.game.players.push({
+      rid: rid, buyins: [round2(buyin)], finalStack: null,
+      stackMode: 'chips', stackCounts: {}, paid: false
+    });
     clearAddForm();
     renderAll();
     showToast(nameOf(rid) + ' added for ' + fmt(buyin));
@@ -1339,25 +1331,17 @@
   /* ---------------- rebuy ---------------- */
 
   function promptRebuy(rid){
-    var body, focus;
-    if (db.entryMode === 'chips'){
-      body = 'How many chips is ' + escapeHtml(nameOf(rid)) + ' rebuying for?' + chipGridHtml('rebuy', {});
-    } else {
-      body = 'Rebuy amount for ' + escapeHtml(nameOf(rid)) + '.' +
-             '<input type="number" inputmode="decimal" id="rebuy-input" min="0" step="0.01" placeholder="0.00">';
-      focus = 'rebuy-input';
-    }
-    body += '<div class="error" id="rebuy-error" style="display:none;"></div>';
+    var body = 'Rebuy amount for ' + escapeHtml(nameOf(rid)) + '.' +
+      '<input type="number" inputmode="decimal" id="rebuy-input" min="0" step="0.01" placeholder="0.00">' +
+      '<div class="error" id="rebuy-error" style="display:none;"></div>';
 
     openModal({
       title: 'Add rebuy',
       body: body,
-      focus: focus,
+      focus: 'rebuy-input',
       buttons: [
         { label: 'Add rebuy', cls:'btn-primary', onClick: function(){
-            var amt = db.entryMode === 'chips'
-              ? chipsToDollars(readChipGrid('rebuy'))
-              : parseFloat(document.getElementById('rebuy-input').value);
+            var amt = parseFloat(document.getElementById('rebuy-input').value);
             var err = document.getElementById('rebuy-error');
             if (isNaN(amt) || amt <= 0){
               err.textContent = 'Enter an amount greater than $0';
@@ -1373,8 +1357,6 @@
         { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
       ]
     });
-
-    if (db.entryMode === 'chips') bindChipGrid('rebuy');
   }
 
   /* ---------------- end / discard game ---------------- */
@@ -1434,9 +1416,6 @@
   /* ---------------- render: chips tab ---------------- */
 
   function renderChips(){
-    document.getElementById('mode-total').className = 'mode-btn' + (db.entryMode === 'total' ? ' active' : '');
-    document.getElementById('mode-chips').className = 'mode-btn' + (db.entryMode === 'chips' ? ' active' : '');
-
     var list = document.getElementById('denom-list');
     list.innerHTML = '';
     db.colors.forEach(function(c){
@@ -1806,7 +1785,7 @@
       rows.sort(function(a,b){ return b.s.total - a.s.total; });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Games</th><th>Rebuys</th><th>Buy-in</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              '<th>Player</th><th>Games</th><th>Rebuys</th><th>Total buy-in</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
@@ -2067,6 +2046,79 @@
     };
   }
 
+  /* ---------------- backup / restore ---------------- */
+
+  // iOS keeps a Safari tab's localStorage separate from a home-screen icon's
+  // localStorage for the same URL, even though it's the same origin — so
+  // this is the way to move data between the two, or keep an offline copy.
+  function exportBackup(){
+    var json = JSON.stringify(db, null, 2);
+    openModal({
+      title: 'Export data',
+      body: 'Copy this and save it somewhere (Notes, email to yourself, etc). ' +
+            'Paste it back in with Import data to restore.' +
+            '<textarea id="backup-text" readonly rows="8" ' +
+              'style="width:100%;margin-top:10px;background:var(--ink-2);border:1px solid var(--line);' +
+              'border-radius:7px;color:var(--text-hi);font-family:monospace;font-size:11px;padding:9px;">' +
+              escapeHtml(json) + '</textarea>',
+      buttons: [
+        { label: 'Copy to clipboard', cls:'btn-primary', onClick: function(){
+            if (navigator.clipboard && navigator.clipboard.writeText){
+              navigator.clipboard.writeText(json)
+                .then(function(){ showToast('Backup copied'); })
+                .catch(function(){ showToast('Could not copy — select the text manually'); });
+            } else {
+              showToast('Select the text and copy it manually');
+            }
+        }},
+        { label: 'Close', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+    var ta = document.getElementById('backup-text');
+    if (ta) setTimeout(function(){ ta.focus(); ta.select(); }, 50);
+  }
+
+  function importBackup(){
+    openModal({
+      title: 'Import data',
+      body: 'Paste a backup below. This replaces everything currently on this device — ' +
+            'players, history, and settings.' +
+            '<textarea id="import-text" rows="8" placeholder="Paste backup JSON here" ' +
+              'style="width:100%;margin-top:10px;background:var(--ink-2);border:1px solid var(--line);' +
+              'border-radius:7px;color:var(--text-hi);font-family:monospace;font-size:11px;padding:9px;"></textarea>' +
+            '<div class="error" id="import-error" style="display:none;"></div>',
+      focus: 'import-text',
+      buttons: [
+        { label: 'Replace data', cls:'btn-danger', onClick: function(){
+            var err = document.getElementById('import-error');
+            var raw = document.getElementById('import-text').value.trim();
+            var parsed;
+            try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; }
+            if (!parsed || typeof parsed !== 'object'){
+              err.textContent = 'That doesn\'t look like a valid backup.';
+              err.style.display = 'block';
+              return;
+            }
+            db.roster       = Array.isArray(parsed.roster) ? parsed.roster : [];
+            db.colors       = parsed.colors || null;
+            db.game         = parsed.game && Array.isArray(parsed.game.players) ? parsed.game : { players: [] };
+            db.history      = Array.isArray(parsed.history) ? parsed.history : [];
+            db.plan         = parsed.plan || null;
+            db.seats        = parsed.seats || null;
+            db.venmoUser    = typeof parsed.venmoUser === 'string' ? parsed.venmoUser : 'kevinpark4';
+            db.nextRosterId = parsed.nextRosterId || 1;
+            db.nextGameId   = parsed.nextGameId || 1;
+            normalizeDb();
+            closeModal();
+            save();
+            renderAll();
+            showToast('Data imported');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
+
   /* ---------------- render: pay tab ---------------- */
 
   // A QR pointing at your own public Venmo profile — you hand your phone to
@@ -2144,10 +2196,7 @@
   document.getElementById('add-btn').onclick = addPlayerFlow;
 
   document.getElementById('name-input').addEventListener('keydown', function(e){
-    if (e.key === 'Enter'){
-      if (db.entryMode === 'chips') addPlayerFlow();
-      else document.getElementById('buyin-input').focus();
-    }
+    if (e.key === 'Enter') document.getElementById('buyin-input').focus();
   });
   document.getElementById('buyin-input').addEventListener('keydown', function(e){
     if (e.key === 'Enter') addPlayerFlow();
@@ -2155,14 +2204,6 @@
 
   document.getElementById('end-btn').onclick = endGame;
   document.getElementById('reset-btn').onclick = discardGame;
-
-  document.querySelectorAll('.mode-btn').forEach(function(b){
-    b.onclick = function(){
-      db.entryMode = b.getAttribute('data-mode');
-      renderAll();
-      showToast(db.entryMode === 'chips' ? 'Entering stacks as chip counts' : 'Entering stacks as dollar totals');
-    };
-  });
 
   document.getElementById('plan-target').oninput = function(){
     db.plan.target = this.value === '' ? '' : parseFloat(this.value);
@@ -2230,6 +2271,9 @@
   venmoInput.addEventListener('keydown', function(e){
     if (e.key === 'Enter') this.blur();
   });
+
+  document.getElementById('backup-export').onclick = exportBackup;
+  document.getElementById('backup-import').onclick = importBackup;
 
   document.getElementById('copy-btn').onclick = function(){
     if (!db.game.players.length) return showToast('Nothing to copy yet');
