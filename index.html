@@ -645,6 +645,12 @@
 (function(){
   'use strict';
 
+  // Without this, any uncaught error just halts silently and the screen looks
+  // "blank" with zero clue why — surface it instead.
+  window.onerror = function(msg){
+    try{ showToast('Error: ' + msg); }catch(e){}
+  };
+
   var KEY = 'poker-ledger:v2';
   var OLD_KEY = 'poker-ledger:current-game';
 
@@ -2102,19 +2108,26 @@
               err.style.display = 'block';
               return;
             }
-            db.roster       = Array.isArray(parsed.roster) ? parsed.roster : [];
-            db.colors       = parsed.colors || null;
-            db.game         = parsed.game && Array.isArray(parsed.game.players) ? parsed.game : { players: [] };
-            db.history      = Array.isArray(parsed.history) ? parsed.history : [];
-            db.plan         = parsed.plan || null;
-            db.seats        = parsed.seats || null;
-            db.venmoUser    = typeof parsed.venmoUser === 'string' ? parsed.venmoUser : 'kevinpark4';
-            db.nextRosterId = parsed.nextRosterId || 1;
-            db.nextGameId   = parsed.nextGameId || 1;
-            normalizeDb();
+            try{
+              db.roster       = Array.isArray(parsed.roster) ? parsed.roster : [];
+              db.colors       = parsed.colors || null;
+              db.game         = parsed.game && Array.isArray(parsed.game.players) ? parsed.game : { players: [] };
+              db.history      = Array.isArray(parsed.history) ? parsed.history : [];
+              db.plan         = parsed.plan || null;
+              db.seats        = parsed.seats || null;
+              db.venmoUser    = typeof parsed.venmoUser === 'string' ? parsed.venmoUser : 'kevinpark4';
+              db.nextRosterId = parsed.nextRosterId || 1;
+              db.nextGameId   = parsed.nextGameId || 1;
+              normalizeDb();
+              save();
+              renderAll();
+            }catch(e2){
+              err.textContent = 'Import ran into an error and stopped: ' + (e2 && e2.message ? e2.message : e2) +
+                ' — screenshot this message.';
+              err.style.display = 'block';
+              return;
+            }
             closeModal();
-            save();
-            renderAll();
             showToast('Data imported');
         }},
         { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
