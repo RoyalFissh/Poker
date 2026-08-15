@@ -2092,10 +2092,13 @@
         { label: 'Replace data', cls:'btn-danger', onClick: function(){
             var err = document.getElementById('import-error');
             var raw = document.getElementById('import-text').value.trim();
+            // Tolerate pasting a whole ```json fenced code block, not just the JSON itself.
+            raw = raw.replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
             var parsed;
             try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; }
             if (!parsed || typeof parsed !== 'object'){
-              err.textContent = 'That doesn\'t look like a valid backup.';
+              err.textContent = 'That doesn\'t look like valid backup JSON — check you copied the whole thing, ' +
+                'starting at { and ending at }.';
               err.style.display = 'block';
               return;
             }
