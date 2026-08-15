@@ -43,7 +43,7 @@
   .wrap{max-width:720px;margin:0 auto;padding:0 14px;}
 
   header{
-    padding:26px 16px 16px;
+    padding:calc(env(safe-area-inset-top, 0px) + 26px) 16px 16px;
     text-align:center;
     background:linear-gradient(180deg, var(--felt-900) 0%, rgba(13,46,30,0) 100%);
   }
@@ -211,6 +211,12 @@
   .settle-row .amt{margin-left:auto;color:var(--gold);font-weight:700;}
   .settle-row .from{color:var(--red);font-weight:600;}
   .settle-row .to{color:var(--felt-400);font-weight:600;}
+  .settle-row.paid{opacity:0.5;}
+  .settle-row.paid .from,.settle-row.paid .to{color:var(--text-lo);}
+  .settle-row label.chk{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer;}
+  .settle-row label.chk input{width:18px;height:18px;flex:0 0 auto;}
+  .settle-row label.chk span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .settle-row.paid label.chk span{text-decoration:line-through;}
   .settle-note{font-size:12px;color:var(--text-lo);margin-top:10px;}
 
   .toolbar{display:flex;gap:9px;margin-top:20px;}
@@ -309,7 +315,7 @@
 
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:430px;}
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:620px;}
   table.stats th{
     text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
     color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
@@ -329,9 +335,22 @@
   .game-head{display:flex;justify-content:space-between;align-items:center;gap:10px;}
   .game-date{font-size:13px;font-weight:600;}
   .game-meta{font-size:11px;color:var(--text-lo);margin-top:2px;}
-  .game-lines{margin-top:9px;display:flex;flex-direction:column;gap:5px;}
+  .game-lines{margin-top:9px;display:flex;flex-direction:column;gap:9px;}
   .game-line{display:flex;justify-content:space-between;font-size:13px;gap:10px;}
   .game-line .nm{color:var(--text-mid);}
+  .game-line-sub{
+    display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;
+    font-size:11px;color:var(--text-lo);margin-top:3px;
+  }
+  .game-line-sub .paid-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .game-line-sub .paid-toggle input{width:14px;height:14px;}
+  .game-line-sub button{padding:4px 9px;font-size:11px;margin-left:auto;}
+
+  .edit-buyin-row{display:flex;gap:8px;align-items:center;margin-top:7px;}
+  .edit-buyin-row .ebr-label{flex:0 0 66px;font-size:12px;color:var(--text-lo);}
+  .edit-buyin-row input{flex:1;}
+  .edit-buyin-row .btn-danger{flex:0 0 32px;padding:6px 0;text-align:center;}
+  .edit-buyin-row .ebr-x{flex:0 0 32px;}
 
   .roster-row{
     display:flex;align-items:center;gap:9px;
@@ -495,6 +514,13 @@
             <input id="plan-stacks" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="8">
           </div>
         </div>
+        <div class="toolbar" style="margin:10px 0 2px;">
+          <button class="btn-primary" id="plan-autofill">Auto-fill chips</button>
+        </div>
+        <div class="hint" style="margin-bottom:4px;">
+          Fills the counts below to match the buy-in above, weighted toward smaller chips so there's
+          change to work with. Tweak any color after.
+        </div>
         <div id="plan-list"></div>
         <div class="plan-total">
           <span class="lbl">One stack</span>
@@ -601,7 +627,7 @@
     colors: null,        // [{ key,label,css,value }]
     entryMode: 'total',  // 'total' | 'chips'
     game: { players: [] },// { rid, buyins:[num], finalStack:num|null }
-    history: [],         // { id, endedAt, entries:[{rid,name,totalIn,finalStack,net}] }
+    history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
     nextRosterId: 1,
@@ -710,6 +736,10 @@
     if (db.nextRosterId <= db.roster.length){
       db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
     }
+
+    db.game.players.forEach(function(p){
+      if (typeof p.paid !== 'boolean') p.paid = false;
+    });
   }
 
   function cloneDefaults(){
@@ -765,7 +795,7 @@
   }
 
   function statsFor(rid){
-    var sessions = 0, total = 0, best = null, worst = null;
+    var sessions = 0, total = 0, best = null, worst = null, totalBuyin = 0, rebuys = 0;
     db.history.forEach(function(g){
       g.entries.forEach(function(e){
         if (e.rid !== rid) return;
@@ -773,6 +803,9 @@
         total += e.net;
         if (best === null || e.net > best) best = e.net;
         if (worst === null || e.net < worst) worst = e.net;
+        var buyins = entryBuyins(e);
+        totalBuyin += buyins.reduce(function(s,b){ return s + b; }, 0);
+        rebuys += Math.max(0, buyins.length - 1);
       });
     });
     return {
@@ -780,7 +813,9 @@
       total: round2(total),
       avg: sessions ? round2(total / sessions) : 0,
       best: best,
-      worst: worst
+      worst: worst,
+      totalBuyin: round2(totalBuyin),
+      rebuys: rebuys
     };
   }
 
@@ -876,6 +911,23 @@
   function netOf(p){
     if (p.finalStack === null || p.finalStack === undefined) return null;
     return round2(p.finalStack - totalIn(p));
+  }
+
+  // History entries saved before this schema kept only a totalIn number, no per-buyin
+  // breakdown — fall back to a single synthetic buy-in so old saves still render fine.
+  function entryBuyins(e){
+    return e.buyins || (e.totalIn !== undefined ? [e.totalIn] : []);
+  }
+
+  function entryTotalIn(e){
+    return round2(entryBuyins(e).reduce(function(s,b){ return s + b; }, 0));
+  }
+
+  function historyGameById(id){
+    for (var i = 0; i < db.history.length; i++){
+      if (db.history[i].id === id) return db.history[i];
+    }
+    return null;
   }
 
   function allStacksIn(){
@@ -1052,10 +1104,12 @@
     renderSettle(complete);
   }
 
+  // Banker view: every player settles with you, not with each other — so this is just
+  // "who owes you" / "who you owe", each with a checkbox for whether it's been paid.
   function renderSettle(complete){
     var body = document.getElementById('settle-body');
     if (!db.game.players.length){
-      body.innerHTML = '<span class="hint">Add players to see settlements.</span>';
+      body.innerHTML = '<span class="hint">Add players to see who owes what.</span>';
       return;
     }
     if (!complete){
@@ -1063,41 +1117,49 @@
       return;
     }
 
-    var debtors = [], creditors = [];
+    var rows = [];
     db.game.players.forEach(function(p){
       var net = netOf(p);
-      if (net < -0.004) debtors.push({ name: nameOf(p.rid), amt: -net });
-      else if (net > 0.004) creditors.push({ name: nameOf(p.rid), amt: net });
+      if (Math.abs(net) < 0.005) return;
+      rows.push({ rid: p.rid, name: nameOf(p.rid), net: net, paid: !!p.paid });
     });
-    debtors.sort(function(a,b){ return b.amt - a.amt; });
-    creditors.sort(function(a,b){ return b.amt - a.amt; });
 
-    var tx = [], di = 0, ci = 0;
-    while (di < debtors.length && ci < creditors.length){
-      var d = debtors[di], c = creditors[ci];
-      var amt = Math.min(d.amt, c.amt);
-      if (amt > 0.004) tx.push({ from: d.name, to: c.name, amt: amt });
-      d.amt -= amt; c.amt -= amt;
-      if (d.amt <= 0.004) di++;
-      if (c.amt <= 0.004) ci++;
-    }
-
-    if (!tx.length){
+    if (!rows.length){
       body.innerHTML = '<span style="color:var(--felt-400);font-size:14px;">Everyone broke even. Nobody owes anybody.</span>';
       return;
     }
 
+    rows.sort(function(a,b){
+      if (a.paid !== b.paid) return a.paid ? 1 : -1;
+      return Math.abs(b.net) - Math.abs(a.net);
+    });
+    var settledCount = rows.filter(function(r){ return r.paid; }).length;
+
     var h = '<div class="settle-list">';
-    tx.forEach(function(t){
-      h += '<div class="settle-row">' +
-             '<span class="from">' + escapeHtml(t.from) + '</span>' +
-             '<span>&#8594;</span>' +
-             '<span class="to">' + escapeHtml(t.to) + '</span>' +
-             '<span class="amt">' + fmt(t.amt) + '</span>' +
+    rows.forEach(function(r){
+      h += '<div class="settle-row' + (r.paid ? ' paid' : '') + '">' +
+             '<label class="chk">' +
+               '<input type="checkbox" data-paid="' + r.rid + '"' + (r.paid ? ' checked' : '') + '>' +
+               '<span>' + escapeHtml(r.name) + '</span>' +
+             '</label>' +
+             '<span class="' + (r.net < 0 ? 'from' : 'to') + '">' + (r.net < 0 ? 'owes you' : 'you owe') + '</span>' +
+             '<span class="amt">' + fmt(Math.abs(r.net)) + '</span>' +
            '</div>';
     });
-    h += '</div><div class="settle-note">Minimum number of transactions to settle the table.</div>';
+    h += '</div><div class="settle-note">' + settledCount + ' of ' + rows.length +
+         ' settled &middot; check someone off once you\'ve squared up with them.</div>';
     body.innerHTML = h;
+
+    document.querySelectorAll('[data-paid]').forEach(function(cb){
+      cb.onchange = function(){
+        var rid = Number(cb.getAttribute('data-paid'));
+        var p = findPlayer(rid);
+        if (!p) return;
+        p.paid = cb.checked;
+        save();
+        renderSettle(true);
+      };
+    });
   }
 
   /* ---------------- add player + duplicate names ---------------- */
@@ -1226,7 +1288,7 @@
   }
 
   function commitPlayer(rid, buyin){
-    db.game.players.push({ rid: rid, buyins: [round2(buyin)], finalStack: null, stackCounts: {} });
+    db.game.players.push({ rid: rid, buyins: [round2(buyin)], finalStack: null, stackCounts: {}, paid: false });
     clearAddForm();
     renderAll();
     showToast(nameOf(rid) + ' added for ' + fmt(buyin));
@@ -1289,9 +1351,10 @@
               return {
                 rid: p.rid,
                 name: nameOf(p.rid),
-                totalIn: totalIn(p),
+                buyins: p.buyins.slice(),
                 finalStack: round2(p.finalStack),
-                net: netOf(p)
+                net: netOf(p),
+                paid: !!p.paid
               };
             });
             db.history.unshift({
@@ -1471,6 +1534,46 @@
       bulk.style.display = 'none';
       bulk.innerHTML = '';
     }
+  }
+
+  // Fills chip counts to match a target buy-in, weighting smaller denominations
+  // more heavily (rank-weighted split) so a stack has plenty of chips to make
+  // change with instead of just a handful of the highest-value color.
+  function autoFillPlan(){
+    var target = parseFloat(db.plan.target);
+    if (isNaN(target) || target <= 0){
+      showToast('Set a buy-in amount first');
+      return;
+    }
+    var targetCents = Math.round(target * 100);
+    var sorted = db.colors.slice().sort(function(a,b){ return a.value - b.value; });
+    var n = sorted.length;
+    var weights = sorted.map(function(c, i){ return n - i; });
+    var totalWeight = weights.reduce(function(s,w){ return s + w; }, 0);
+
+    var counts = {};
+    var usedCents = 0;
+    sorted.forEach(function(c, i){
+      var valCents = Math.round(c.value * 100);
+      if (valCents <= 0){ counts[c.key] = 0; return; }
+      var shareCents = Math.round(targetCents * weights[i] / totalWeight);
+      var n_i = Math.max(0, Math.round(shareCents / valCents));
+      counts[c.key] = n_i;
+      usedCents += n_i * valCents;
+    });
+
+    // True up any rounding error with the smallest denomination so the stack lands exactly on target.
+    var smallest = sorted[0];
+    var smallCents = smallest ? Math.round(smallest.value * 100) : 0;
+    if (smallCents > 0){
+      var diff = targetCents - usedCents;
+      counts[smallest.key] = Math.max(0, counts[smallest.key] + Math.round(diff / smallCents));
+    }
+
+    db.plan.counts = counts;
+    save();
+    renderPlan();
+    showToast('Filled a ' + fmt(target) + ' stack');
   }
 
   /* ---------------- seat generator ---------------- */
@@ -1661,12 +1764,14 @@
       rows.sort(function(a,b){ return b.s.total - a.s.total; });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Games</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              '<th>Player</th><th>Games</th><th>Rebuys</th><th>Buy-in</th><th>Net</th><th>Avg</th><th>Best</th><th>Worst</th>' +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
                '<td>' + escapeHtml(x.r.name) + '</td>' +
                '<td>' + x.s.sessions + '</td>' +
+               '<td>' + x.s.rebuys + '</td>' +
+               '<td>' + fmt(x.s.totalBuyin) + '</td>' +
                '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
                '<td class="' + cls(x.s.avg) + '">' + fmt(x.s.avg) + '</td>' +
                '<td class="' + cls(x.s.best) + '">' + fmt(x.s.best || 0) + '</td>' +
@@ -1687,15 +1792,31 @@
       list.innerHTML = '<div class="empty">Nothing saved yet.</div>';
     } else {
       db.history.forEach(function(g){
-        var pot = round2(g.entries.reduce(function(s,e){ return s + e.totalIn; }, 0));
+        var pot = round2(g.entries.reduce(function(s,e){ return s + entryTotalIn(e); }, 0));
         var d = new Date(g.endedAt);
         var when = isNaN(d.getTime()) ? 'Unknown date'
           : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
 
         var lines = g.entries.slice().sort(function(a,b){ return b.net - a.net; }).map(function(e){
-          return '<div class="game-line">' +
-                   '<span class="nm">' + escapeHtml(e.name) + '</span>' +
-                   '<span class="' + cls(e.net) + '">' + fmt(e.net) + '</span>' +
+          var buyins = entryBuyins(e);
+          var rebuys = Math.max(0, buyins.length - 1);
+          var subText = fmt(entryTotalIn(e)) + ' in' +
+            (rebuys ? ' (' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') + ')' : '') +
+            ' &middot; ' + fmt(e.finalStack) + ' out';
+          var paidToggle = Math.abs(e.net) >= 0.005
+            ? '<label class="paid-toggle"><input type="checkbox" data-histpaid="' + g.id + ':' + e.rid + '"' +
+              (e.paid ? ' checked' : '') + '> Paid</label>'
+            : '';
+          return '<div>' +
+                   '<div class="game-line">' +
+                     '<span class="nm">' + escapeHtml(e.name) + '</span>' +
+                     '<span class="' + cls(e.net) + '">' + fmt(e.net) + '</span>' +
+                   '</div>' +
+                   '<div class="game-line-sub">' +
+                     '<span>' + subText + '</span>' +
+                     paidToggle +
+                     '<button class="btn-ghost" data-editentry="' + g.id + ':' + e.rid + '">Edit</button>' +
+                   '</div>' +
                  '</div>';
         }).join('');
 
@@ -1729,6 +1850,26 @@
               { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
             ]
           });
+        };
+      });
+
+      document.querySelectorAll('[data-histpaid]').forEach(function(cb){
+        cb.onchange = function(){
+          var parts = cb.getAttribute('data-histpaid').split(':');
+          var g = historyGameById(Number(parts[0]));
+          if (!g) return;
+          var rid = Number(parts[1]);
+          for (var i = 0; i < g.entries.length; i++){
+            if (g.entries[i].rid === rid){ g.entries[i].paid = cb.checked; break; }
+          }
+          save();
+        };
+      });
+
+      document.querySelectorAll('[data-editentry]').forEach(function(btn){
+        btn.onclick = function(){
+          var parts = btn.getAttribute('data-editentry').split(':');
+          editHistoryEntry(Number(parts[0]), Number(parts[1]));
         };
       });
     }
@@ -1793,6 +1934,95 @@
   function cls(n){
     if (n === null || n === undefined) return 'zero';
     return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero');
+  }
+
+  /* ---------------- edit a saved game ---------------- */
+
+  // Fixes an error after the fact: lets you correct any buy-in, add/remove a
+  // rebuy, or change the final stack on a game that's already in history.
+  function editHistoryEntry(gameId, rid){
+    var g = historyGameById(gameId);
+    if (!g) return;
+    var e = null;
+    for (var i = 0; i < g.entries.length; i++){
+      if (g.entries[i].rid === rid){ e = g.entries[i]; break; }
+    }
+    if (!e) return;
+
+    var buyins = entryBuyins(e).slice();
+    if (!buyins.length) buyins = [0];
+
+    function rowsHtml(){
+      return buyins.map(function(b, i){
+        return '<div class="edit-buyin-row">' +
+                 '<span class="ebr-label">' + (i === 0 ? 'Buy-in' : 'Rebuy ' + i) + '</span>' +
+                 '<input type="number" inputmode="decimal" min="0" step="0.01" data-editbuyin="' + i + '" value="' + b + '">' +
+                 (buyins.length > 1
+                   ? '<button type="button" class="btn-danger" data-removebuyin="' + i + '">&times;</button>'
+                   : '<span class="ebr-x"></span>') +
+               '</div>';
+      }).join('');
+    }
+
+    function bindRows(){
+      document.querySelectorAll('[data-editbuyin]').forEach(function(inp){
+        inp.oninput = function(){
+          var idx = Number(inp.getAttribute('data-editbuyin'));
+          var v = parseFloat(inp.value);
+          buyins[idx] = isNaN(v) ? 0 : v;
+        };
+      });
+      document.querySelectorAll('[data-removebuyin]').forEach(function(btn){
+        btn.onclick = function(){
+          buyins.splice(Number(btn.getAttribute('data-removebuyin')), 1);
+          document.getElementById('edit-buyin-rows').innerHTML = rowsHtml();
+          bindRows();
+        };
+      });
+    }
+
+    openModal({
+      title: 'Edit ' + escapeHtml(e.name),
+      body:
+        '<div id="edit-buyin-rows">' + rowsHtml() + '</div>' +
+        '<button type="button" class="btn-ghost" id="edit-addbuyin" style="margin-top:9px;width:100%;">+ Add rebuy</button>' +
+        '<div style="margin-top:14px;">' +
+          '<span class="field-label">Final stack</span>' +
+          '<input type="number" inputmode="decimal" min="0" step="0.01" id="edit-finalstack" value="' + e.finalStack + '">' +
+        '</div>' +
+        '<div class="error" id="edit-entry-error" style="display:none;"></div>',
+      buttons: [
+        { label: 'Save changes', cls:'btn-primary', onClick: function(){
+            var err = document.getElementById('edit-entry-error');
+            if (!buyins.length || buyins.some(function(b){ return isNaN(b) || b < 0; })){
+              err.textContent = 'Enter a valid amount for each buy-in';
+              err.style.display = 'block';
+              return;
+            }
+            var fs = parseFloat(document.getElementById('edit-finalstack').value);
+            if (isNaN(fs) || fs < 0){
+              err.textContent = 'Enter a valid final stack';
+              err.style.display = 'block';
+              return;
+            }
+            e.buyins = buyins.map(round2);
+            e.finalStack = round2(fs);
+            e.net = round2(fs - e.buyins.reduce(function(s,b){ return s + b; }, 0));
+            closeModal();
+            save();
+            renderHistory();
+            showToast('Game updated');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+
+    bindRows();
+    document.getElementById('edit-addbuyin').onclick = function(){
+      buyins.push(0);
+      document.getElementById('edit-buyin-rows').innerHTML = rowsHtml();
+      bindRows();
+    };
   }
 
   /* ---------------- tabs ---------------- */
@@ -1860,6 +2090,8 @@
     updatePlanTotals();
     save();
   };
+
+  document.getElementById('plan-autofill').onclick = autoFillPlan;
 
   document.getElementById('plan-clear').onclick = function(){
     db.plan.counts = {};
