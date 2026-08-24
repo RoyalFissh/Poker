@@ -218,8 +218,14 @@
     background:var(--ink-2);border-radius:8px;padding:10px 13px;font-size:14px;
   }
   .settle-row .amt{margin-left:auto;color:var(--gold);font-weight:700;}
-  .settle-row .from{color:var(--red);font-weight:600;}
-  .settle-row .to{color:var(--felt-400);font-weight:600;}
+  .settle-row .from{color:var(--red);font-weight:600;font-size:12.5px;}
+  .settle-row .to{color:var(--felt-400);font-weight:600;font-size:12.5px;}
+  .btn-venmo{
+    flex:0 0 auto;background:#3d95ce;color:#fff;
+    border-radius:6px;padding:7px 10px;font-size:11px;
+  }
+  .btn-venmo:active{background:#2f7cae;}
+  .settle-row.paid .btn-venmo{background:var(--ink-3);color:var(--text-lo);}
   .settle-row.paid{opacity:0.5;}
   .settle-row.paid .from,.settle-row.paid .to{color:var(--text-lo);}
   .settle-row label.chk{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer;}
@@ -232,16 +238,18 @@
   .toolbar button{flex:1;}
 
   /* ---------- chips tab ---------- */
+  /* Kept metric-for-metric identical to .plan-row below so the two chip lists
+     on this tab read as one thing. */
   .denom-row{
     display:grid;
-    grid-template-columns:22px 1fr 108px;
-    gap:11px;align-items:center;
-    padding:9px 0;
-    border-bottom:1px solid var(--line);
+    grid-template-columns:18px minmax(0,1fr) 108px;
+    gap:10px;align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid rgba(51,58,52,0.5);
   }
   .denom-row:last-child{border-bottom:none;}
-  .denom-name{font-size:14px;font-weight:600;}
-  .denom-row input{text-align:right;}
+  .denom-name{font-size:14px;font-weight:600;line-height:1.2;}
+  .denom-row input{text-align:right;font-size:15px;padding:8px 10px;}
 
   /* ---------- buy-in stack builder ---------- */
   .plan-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
@@ -316,7 +324,7 @@
 
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:660px;}
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:800px;}
   table.stats th{white-space:nowrap;}
   table.stats th{
     text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
@@ -793,7 +801,14 @@
 
     db.game.players.forEach(function(p){
       if (typeof p.paid !== 'boolean') p.paid = false;
-      if (p.stackMode !== 'total' && p.stackMode !== 'chips') p.stackMode = 'chips';
+      if (p.stackMode !== 'total' && p.stackMode !== 'chips') p.stackMode = 'total';
+      // Dollars are the default view now. Move anyone still sitting on the old
+      // chips-first default across, unless they've already counted into that grid.
+      if (p.stackMode === 'chips' && !anyChipCounts(p.stackCounts)) p.stackMode = 'total';
+    });
+
+    db.roster.forEach(function(r){
+      if (typeof r.venmo !== 'string') r.venmo = '';
     });
   }
 
@@ -870,8 +885,73 @@
       best: best,
       worst: worst,
       totalBuyin: round2(totalBuyin),
-      rebuys: rebuys
+      rebuys: rebuys,
+      avgRebuys: sessions ? Math.round((rebuys / sessions) * 10) / 10 : 0,
+      avgBuyin: sessions ? round2(totalBuyin / sessions) : 0
     };
+  }
+
+  /* ---------------- venmo ---------------- */
+
+  function cleanVenmo(s){
+    return String(s || '').trim().replace(/^@+/, '').replace(/\s+/g, '');
+  }
+
+  function validVenmo(u){
+    return /^[A-Za-z0-9_-]{3,30}$/.test(u);
+  }
+
+  // Deep link that opens Venmo with the person, amount and note already filled
+  // in. Nothing is sent from here — you still hit the button inside Venmo.
+  function venmoUrl(user, txn, amt){
+    var note = 'Poker ' + new Date().toLocaleDateString(undefined, { month:'short', day:'numeric' });
+    return 'https://venmo.com/' + encodeURIComponent(user) +
+           '?txn=' + txn +
+           '&amount=' + Math.abs(round2(amt)).toFixed(2) +
+           '&note=' + encodeURIComponent(note);
+  }
+
+  // txn is 'charge' (they owe you) or 'pay' (you owe them).
+  function openVenmoFor(rid, amt, txn){
+    var r = rosterById(rid);
+    if (!r) return;
+    var user = cleanVenmo(r.venmo);
+    if (user) return window.open(venmoUrl(user, txn, amt), '_blank');
+
+    askVenmoHandle(r, txn === 'charge'
+      ? 'Request ' + fmt(amt) + ' from ' + r.name
+      : 'Pay ' + r.name + ' ' + fmt(amt), function(u){
+        window.open(venmoUrl(u, txn, amt), '_blank');
+      });
+  }
+
+  function askVenmoHandle(r, action, then){
+    openModal({
+      title: r.name + '’s Venmo',
+      body: action + '. Enter their Venmo username once &mdash; it sticks to their ' +
+            'roster profile for every game after this.' +
+            '<input type="text" id="vh-input" maxlength="40" placeholder="username" ' +
+              'autocomplete="off" autocapitalize="none" value="' + escapeHtml(r.venmo || '') + '">' +
+            '<div class="error" id="vh-error" style="display:none;"></div>',
+      focus: 'vh-input',
+      buttons: [
+        { label: 'Save & open Venmo', cls:'btn-primary', onClick: function(){
+            var u = cleanVenmo(document.getElementById('vh-input').value);
+            var err = document.getElementById('vh-error');
+            if (!validVenmo(u)){
+              err.textContent = 'Usernames are 3-30 letters, numbers, dashes or underscores.';
+              err.style.display = 'block';
+              return;
+            }
+            r.venmo = u;
+            closeModal();
+            save();
+            renderHistory();
+            if (then) then(u);
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
   }
 
   /* ---------------- modal ---------------- */
@@ -927,6 +1007,14 @@
     });
     h += '</div><div class="chip-total" id="chiptotal-' + ns + '">$0.00</div>';
     return h;
+  }
+
+  function anyChipCounts(counts){
+    if (!counts) return false;
+    return Object.keys(counts).some(function(k){
+      var n = parseInt(counts[k], 10);
+      return !isNaN(n) && n > 0;
+    });
   }
 
   function readChipGrid(ns){
@@ -1010,15 +1098,16 @@
       var netClass = net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'));
       var netText  = net === null ? 'Awaiting cash-out' : fmt(net);
 
-      var stackMode = p.stackMode === 'total' ? 'total' : 'chips';
+      // Dollars lead; counting chips is the secondary way in.
+      var stackMode = p.stackMode === 'chips' ? 'chips' : 'total';
       var stackHead =
         '<div class="stack-head">' +
           '<span class="field-label"><span class="gold">&#9679;</span> Final stack</span>' +
           '<div class="stack-mode-toggle">' +
-            '<button type="button" class="stack-mode-btn' + (stackMode === 'chips' ? ' active' : '') +
-              '" data-stackmode="chips" data-rid="' + p.rid + '">Chips</button>' +
             '<button type="button" class="stack-mode-btn' + (stackMode === 'total' ? ' active' : '') +
               '" data-stackmode="total" data-rid="' + p.rid + '">$</button>' +
+            '<button type="button" class="stack-mode-btn' + (stackMode === 'chips' ? ' active' : '') +
+              '" data-stackmode="chips" data-rid="' + p.rid + '">Chips</button>' +
           '</div>' +
         '</div>';
 
@@ -1190,10 +1279,13 @@
              '</label>' +
              '<span class="' + (r.net < 0 ? 'from' : 'to') + '">' + (r.net < 0 ? 'owes you' : 'you owe') + '</span>' +
              '<span class="amt">' + fmt(Math.abs(r.net)) + '</span>' +
+             '<button class="btn-venmo" data-venmorow="' + r.rid + '">' +
+               (r.net < 0 ? 'Request' : 'Pay') + '</button>' +
            '</div>';
     });
     h += '</div><div class="settle-note">' + settledCount + ' of ' + rows.length +
-         ' settled &middot; check someone off once you\'ve squared up with them.</div>';
+         ' settled &middot; check someone off once you\'ve squared up with them. ' +
+         'Request / Pay opens Venmo with the amount filled in &mdash; you still confirm it there.</div>';
     body.innerHTML = h;
 
     document.querySelectorAll('[data-paid]').forEach(function(cb){
@@ -1204,6 +1296,18 @@
         p.paid = cb.checked;
         save();
         renderSettle(true);
+      };
+    });
+
+    document.querySelectorAll('[data-venmorow]').forEach(function(btn){
+      btn.onclick = function(){
+        var rid = Number(btn.getAttribute('data-venmorow'));
+        var p = findPlayer(rid);
+        if (!p) return;
+        var net = netOf(p);
+        if (net === null) return;
+        // Down on the night means they owe you — charge them; up means you owe them.
+        openVenmoFor(rid, Math.abs(net), net < 0 ? 'charge' : 'pay');
       };
     });
   }
@@ -1330,7 +1434,7 @@
   function commitPlayer(rid, buyin){
     db.game.players.push({
       rid: rid, buyins: [round2(buyin)], finalStack: null,
-      stackMode: 'chips', stackCounts: {}, paid: false
+      stackMode: 'total', stackCounts: {}, paid: false
     });
     clearAddForm();
     renderAll();
@@ -1794,7 +1898,8 @@
       rows.sort(function(a,b){ return b.s.total - a.s.total; });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Net</th><th>Games</th><th>Rebuys</th><th>Total buy-in</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              '<th>Player</th><th>Net</th><th>Games</th><th>Rebuys</th><th>RB/game</th>' +
+              '<th>Total buy-in</th><th>Buy-in/game</th><th>Avg</th><th>Best</th><th>Worst</th>' +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
@@ -1802,7 +1907,9 @@
                '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
                '<td>' + x.s.sessions + '</td>' +
                '<td>' + x.s.rebuys + '</td>' +
+               '<td>' + x.s.avgRebuys.toFixed(1) + '</td>' +
                '<td>' + fmt(x.s.totalBuyin) + '</td>' +
+               '<td>' + fmt(x.s.avgBuyin) + '</td>' +
                '<td class="' + cls(x.s.avg) + '">' + fmt(x.s.avg) + '</td>' +
                '<td class="' + cls(x.s.best) + '">' + fmt(x.s.best || 0) + '</td>' +
                '<td class="' + cls(x.s.worst) + '">' + fmt(x.s.worst || 0) + '</td>' +
@@ -1845,6 +1952,10 @@
                    '<div class="game-line-sub">' +
                      '<span>' + subText + '</span>' +
                      paidToggle +
+                     (Math.abs(e.net) >= 0.005 && !e.paid
+                       ? '<button class="btn-venmo" data-venmohist="' + e.rid + ':' + e.net + '">' +
+                         (e.net < 0 ? 'Request' : 'Pay') + '</button>'
+                       : '') +
                      '<button class="btn-ghost" data-editentry="' + g.id + ':' + e.rid + '">Edit</button>' +
                    '</div>' +
                  '</div>';
@@ -1896,6 +2007,15 @@
         };
       });
 
+      document.querySelectorAll('[data-venmohist]').forEach(function(btn){
+        btn.onclick = function(){
+          var parts = btn.getAttribute('data-venmohist').split(':');
+          var net = parseFloat(parts[1]);
+          if (isNaN(net)) return;
+          openVenmoFor(Number(parts[0]), Math.abs(net), net < 0 ? 'charge' : 'pay');
+        };
+      });
+
       document.querySelectorAll('[data-editentry]').forEach(function(btn){
         btn.onclick = function(){
           var parts = btn.getAttribute('data-editentry').split(':');
@@ -1915,9 +2035,10 @@
         rh += '<div class="roster-row">' +
                 '<div class="nm">' + escapeHtml(r.name) +
                   '<div class="ct">' + s.sessions + ' session' + (s.sessions === 1 ? '' : 's') +
-                  (inGame(r.id) ? ' &middot; at the table now' : '') + '</div>' +
+                  (inGame(r.id) ? ' &middot; at the table now' : '') +
+                  (r.venmo ? ' &middot; @' + escapeHtml(r.venmo) : '') + '</div>' +
                 '</div>' +
-                '<button class="btn-ghost" data-rename="' + r.id + '">Rename</button>' +
+                '<button class="btn-ghost" data-rename="' + r.id + '">Edit</button>' +
               '</div>';
       });
       rc.innerHTML = rh;
@@ -1928,14 +2049,20 @@
           var r = rosterById(rid);
           if (!r) return;
           openModal({
-            title: 'Rename player',
-            body: 'Their history and stats stay attached &mdash; only the display name changes.' +
-                  '<input type="text" id="rename-input" maxlength="24" value="' + escapeHtml(r.name) + '">' +
+            title: 'Edit player',
+            body: 'Their history and stats stay attached &mdash; only these details change.' +
+                  '<span class="field-label" style="margin-top:12px;">Name</span>' +
+                  '<input type="text" id="rename-input" maxlength="24" style="margin-top:0;" value="' + escapeHtml(r.name) + '">' +
+                  '<span class="field-label" style="margin-top:12px;">Venmo username</span>' +
+                  '<input type="text" id="rename-venmo" maxlength="40" style="margin-top:0;" placeholder="optional" ' +
+                    'autocomplete="off" autocapitalize="none" value="' + escapeHtml(r.venmo || '') + '">' +
+                  '<div class="hint" style="margin-top:8px;">Used by the Request / Pay buttons on the Table tab.</div>' +
                   '<div class="error" id="rename-error" style="display:none;"></div>',
             focus: 'rename-input',
             buttons: [
-              { label: 'Save name', cls:'btn-primary', onClick: function(){
+              { label: 'Save', cls:'btn-primary', onClick: function(){
                   var v = document.getElementById('rename-input').value.trim();
+                  var vm = cleanVenmo(document.getElementById('rename-venmo').value);
                   var err = document.getElementById('rename-error');
                   if (!v){
                     err.textContent = 'Enter a name';
@@ -1948,10 +2075,16 @@
                     err.style.display = 'block';
                     return;
                   }
+                  if (vm && !validVenmo(vm)){
+                    err.textContent = 'Venmo usernames are 3-30 letters, numbers, dashes or underscores.';
+                    err.style.display = 'block';
+                    return;
+                  }
                   r.name = v;
+                  r.venmo = vm;
                   closeModal();
                   renderAll();
-                  showToast('Renamed to ' + v);
+                  showToast('Saved ' + v);
               }},
               { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
             ]
