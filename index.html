@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0a2418">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -433,6 +433,19 @@
     border-radius:5px;padding:3px 7px;font-size:10px;font-weight:600;
   }
   .btn-mini:active{border-color:var(--felt-500);color:var(--text-hi);}
+  .gsel{
+    display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+    padding-bottom:2px;margin-bottom:12px;
+  }
+  .gsel button{
+    flex:0 0 auto;background:var(--ink-2);border:1px solid var(--line);
+    color:var(--text-mid);border-radius:20px;padding:6px 12px;font-size:12px;
+  }
+  .gsel button.active{background:var(--felt-700);border-color:var(--felt-500);color:var(--text-hi);}
+  .chart-title{
+    text-align:center;font-size:15px;font-weight:700;
+    margin:2px 0 8px;color:var(--text-hi);
+  }
   .chart-wrap{margin:4px 0 2px;}
   .chart-wrap svg{width:100%;height:auto;display:block;}
   .chart-legend{
@@ -442,58 +455,80 @@
   .chart-legend .cl-label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
   .chart-legend .cl-val{font-size:14px;font-weight:700;margin-top:3px;}
   .chart-empty{font-size:12px;color:var(--text-lo);line-height:1.5;}
+  /* Keep "$45.00 / +(90.0)%" on one line — it reads as one figure. */
+  .chart-sessions .game-line{align-items:baseline;}
+  .chart-sessions .game-line > span:last-child{white-space:nowrap;flex:0 0 auto;}
+  .chart-sessions .nm{font-size:12px;line-height:1.35;}
 
   /* ---------- compact panels ----------
-     History is the size Kevin wants; Table / Chips / Seats / Pay were built
-     bigger, so scale their chrome down to match. Text inputs stay at 16px on
-     purpose — anything smaller makes iOS Safari zoom in on focus. */
-  .panel.compact .section{margin-top:16px;}
-  .panel.compact .section-title{font-size:11px;margin-bottom:8px;}
-  .panel.compact .card{padding:12px;}
-  .panel.compact .hint{font-size:11px;}
-  .panel.compact .empty{font-size:13px;padding:22px 12px;}
-  .panel.compact .field-label{font-size:10px;margin-bottom:4px;}
+     Everything here is pinned to the Player stats table's scale: 13px body,
+     ~10px labels. maximum-scale=1 in the viewport is what lets inputs drop
+     under 16px without iOS Safari zooming in when they're tapped. */
+  .panel.compact .section{margin-top:14px;}
+  .panel.compact .section-title{font-size:10px;margin-bottom:7px;}
+  .panel.compact .card{padding:10px 11px;}
+  .panel.compact .hint{font-size:10.5px;line-height:1.45;}
+  .panel.compact .empty{font-size:12px;padding:18px 12px;}
+  .panel.compact .field-label{font-size:9.5px;margin-bottom:3px;}
   .panel.compact input[type=text],
-  .panel.compact input[type=number]{padding:8px 10px;}
-  .panel.compact .btn-primary{padding:9px 14px;font-size:13px;}
-  .panel.compact .btn-gold{padding:9px 14px;font-size:13px;}
-  .panel.compact .btn-ghost{padding:8px 11px;font-size:12px;}
-  .panel.compact .btn-danger{padding:5px 9px;font-size:11px;}
-  .panel.compact .toolbar{margin-top:16px;}
-  .panel.compact .player-row{padding:11px 12px;}
-  .panel.compact .player-name{font-size:14px;}
-  .panel.compact .rebuy-list{font-size:11px;}
-  .panel.compact .net{font-size:13px;}
-  .panel.compact .net-label{font-size:10px;}
-  .panel.compact .bbhr{font-size:11px;}
-  .panel.compact .stack-mode-btn{padding:4px 9px;font-size:10px;}
+  .panel.compact input[type=number]{font-size:14px;padding:7px 9px;border-radius:6px;}
+  .panel.compact .btn-primary{padding:8px 12px;font-size:12px;}
+  .panel.compact .btn-gold{padding:8px 12px;font-size:12px;}
+  .panel.compact .btn-ghost{padding:7px 10px;font-size:11.5px;}
+  .panel.compact .btn-danger{padding:4px 8px;font-size:10.5px;}
+  .panel.compact .toolbar{gap:7px;margin-top:12px;}
+  .panel.compact .players{gap:8px;}
+  .panel.compact .player-row{padding:9px 11px;border-radius:8px;}
+  .panel.compact .player-top{margin-bottom:8px;}
+  .panel.compact .player-name{font-size:13px;}
+  .panel.compact .rebuy-list{font-size:10.5px;}
+  .panel.compact .net{font-size:12.5px;}
+  .panel.compact .net-label{font-size:9.5px;}
+  .panel.compact .bbhr{font-size:10.5px;}
+  .panel.compact .player-footer{margin-top:8px;padding-top:8px;}
+  .panel.compact .row-actions{margin-top:8px;}
+  .panel.compact .stack-mode-btn{padding:3px 8px;font-size:9.5px;}
   .panel.compact .chip-cell .chip-cap{font-size:9px;}
-  .panel.compact .chip-cell input{font-size:14px;padding:6px 3px;}
-  .panel.compact .chip-total{font-size:12px;}
-  .panel.compact .stat{padding:10px 12px;}
-  .panel.compact .stat-label{font-size:10px;}
-  .panel.compact .stat-value{font-size:17px;}
-  .panel.compact .settle-row{padding:8px 11px;font-size:13px;}
-  .panel.compact .settle-note{font-size:11px;}
-  .panel.compact .clock-time{font-size:15px;}
+  .panel.compact .chip-cell input{font-size:13px;padding:5px 3px;}
+  .panel.compact .chip-total{font-size:11.5px;}
+  .panel.compact .summary-grid{gap:8px;}
+  .panel.compact .stat{padding:8px 10px;}
+  .panel.compact .stat-label{font-size:9.5px;}
+  .panel.compact .stat-value{font-size:15px;}
+  .panel.compact .settle-row{padding:7px 10px;font-size:12.5px;gap:7px;}
+  .panel.compact .settle-row .from,
+  .panel.compact .settle-row .to{font-size:11px;}
+  .panel.compact .settle-row label.chk input{width:16px;height:16px;}
+  .panel.compact .btn-venmo{padding:5px 8px;font-size:10px;}
+  .panel.compact .settle-note{font-size:10.5px;}
+  .panel.compact .clock-time{font-size:14px;}
+  .panel.compact .clock-time.idle{font-size:12.5px;}
+  .panel.compact .clock-row{margin-top:10px;padding-top:10px;}
+  .panel.compact .blind-grid{gap:8px;margin-top:9px;}
+  .panel.compact .denom-row,
+  .panel.compact .plan-row{padding:8px 0;}
   .panel.compact .denom-name,
-  .panel.compact .plan-name{font-size:13px;}
-  .panel.compact .denom-row input{font-size:14px;}
+  .panel.compact .plan-name{font-size:12.5px;}
+  .panel.compact .denom-row input{font-size:13px;}
   .panel.compact .plan-sub{font-size:10px;}
-  .panel.compact .stepper button{width:29px;height:33px;font-size:16px;}
-  .panel.compact .stepper input{width:48px;font-size:14px;padding:7px 2px;}
-  .panel.compact .plan-total .val{font-size:19px;}
-  .panel.compact .plan-note{font-size:12px;}
-  .panel.compact .plan-bulk{font-size:11.5px;}
-  .panel.compact .size-btn{padding:10px 0;font-size:14px;}
-  .panel.compact .seat-reveal{font-size:56px;}
-  .panel.compact .seat-reveal.idle{font-size:38px;}
-  .panel.compact .seat-sub{font-size:12px;}
-  .panel.compact #seat-draw{padding:13px;font-size:15px;}
-  .panel.compact .seat-tile{padding:8px 3px;}
-  .panel.compact .seat-tile .n{font-size:16px;}
-  .panel.compact .venmo-qr{padding:13px;}
-  .panel.compact .venmo-qr img{width:190px;height:190px;}
+  .panel.compact .stepper button{width:27px;height:30px;font-size:15px;}
+  .panel.compact .stepper input{width:44px;font-size:13px;padding:6px 2px;}
+  .panel.compact .plan-total .val{font-size:17px;}
+  .panel.compact .plan-total .lbl{font-size:10px;}
+  .panel.compact .plan-note{font-size:11.5px;}
+  .panel.compact .plan-bulk{font-size:11px;padding:9px 11px;}
+  .panel.compact .size-grid{gap:6px;}
+  .panel.compact .size-btn{padding:8px 0;font-size:13px;}
+  .panel.compact .seat-reveal{font-size:46px;padding:6px 0 0;}
+  .panel.compact .seat-reveal.idle{font-size:30px;}
+  .panel.compact .seat-sub{font-size:11px;margin:6px 0 11px;}
+  .panel.compact #seat-draw{padding:11px;font-size:13px;}
+  .panel.compact .seat-grid{gap:6px;}
+  .panel.compact .seat-tile{padding:7px 3px;border-radius:8px;}
+  .panel.compact .seat-tile .n{font-size:15px;}
+  .panel.compact .seat-tile .who{font-size:9px;}
+  .panel.compact .venmo-qr{padding:11px;}
+  .panel.compact .venmo-qr img{width:170px;height:170px;}
 
   /* ---------- pay tab ---------- */
   .venmo-qr{
@@ -707,6 +742,14 @@
     </div>
 
     <div class="section">
+      <div class="section-title">Profit graph</div>
+      <div class="card">
+        <div class="gsel" id="graph-select"></div>
+        <div id="graph-body"></div>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">
         <span>Past games</span>
         <span id="history-count" style="font-size:11px;"></span>
@@ -808,6 +851,7 @@
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
     venmoUser: 'kevinpark4',
+    graphRid: null,      // which player the Profit graph section is showing
     nextRosterId: 1,
     nextGameId: 1
   };
@@ -886,9 +930,11 @@
     return (net / totalIn) * 100;
   }
 
+  // Sign and % sit outside the brackets, the number inside: +(245.5)%
   function fmtRoi(v){
     if (v === null || v === undefined) return '—';
-    return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1) + '%';
+    var sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+    return sign + '(' + (Math.round(Math.abs(v) * 10) / 10).toFixed(1) + ')%';
   }
 
   function clampSize(n){
@@ -938,6 +984,7 @@
         if (p.plan)  db.plan  = p.plan;
         if (p.seats) db.seats = p.seats;
         if (typeof p.venmoUser === 'string') db.venmoUser = p.venmoUser;
+        if (typeof p.graphRid === 'number') db.graphRid = p.graphRid;
       }catch(e){}
     } else {
       migrateOld();
@@ -1062,7 +1109,8 @@
           totalIn: tin,
           roi: roiOf(e.net, tin),
           hours: typeof e.hours === 'number' ? e.hours : null,
-          bb: typeof g.bb === 'number' ? g.bb : null
+          bb: typeof g.bb === 'number' ? g.bb : null,
+          sb: typeof g.sb === 'number' ? g.sb : null
         });
       });
     });
@@ -2342,9 +2390,10 @@
           var buyins = entryBuyins(e);
           var rebuys = Math.max(0, buyins.length - 1);
           var tin = entryTotalIn(e);
+          // ROI stays grey — the green/red is doing its job on the profit itself.
           var subText = fmt(tin) + ' in' +
             (rebuys ? ' (' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') + ')' : '') +
-            ' &middot; ' + fmt(e.finalStack) + ' out &middot; ' + fmtRoi(roiOf(e.net, tin));
+            ' &middot; ' + fmt(e.finalStack) + ' out / ' + fmtRoi(roiOf(e.net, tin));
           return '<div>' +
                    '<div class="game-line">' +
                      '<span class="nm">' + escapeHtml(entryName(e)) + '</span>' +
@@ -2372,7 +2421,10 @@
                 (g.bb ? ' &middot; ' + fmt(g.sb || 0) + '/' + fmt(g.bb) : '') +
               '</div>' +
             '</div>' +
-            '<button class="btn-danger" data-delgame="' + g.id + '">Delete</button>' +
+            '<div style="display:flex;gap:6px;flex:0 0 auto;">' +
+              '<button class="btn-ghost" data-editgame="' + g.id + '">Edit game</button>' +
+              '<button class="btn-danger" data-delgame="' + g.id + '">Delete</button>' +
+            '</div>' +
           '</div>' +
           '<div class="game-lines">' + lines + '</div>';
         list.appendChild(card2);
@@ -2395,6 +2447,10 @@
             ]
           });
         };
+      });
+
+      document.querySelectorAll('[data-editgame]').forEach(function(btn){
+        btn.onclick = function(){ editHistoryGame(Number(btn.getAttribute('data-editgame'))); };
       });
 
       document.querySelectorAll('[data-venmohist]').forEach(function(btn){
@@ -2491,131 +2547,275 @@
     return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero');
   }
 
-  /* ---------------- player graph ---------------- */
+  /* ---------------- profit graph ---------------- */
 
-  // Cumulative profit across sessions, drawn as inline SVG so there's no
-  // library to load and it scales with the modal.
+  // Round tick spacing — 1, 2, 2.5, 5 or 10 times a power of ten — so the
+  // y-axis lands on numbers a human would have picked.
+  function niceStep(range, targetTicks){
+    var raw = range / targetTicks;
+    if (!(raw > 0)) return 1;
+    var mag = Math.pow(10, Math.floor(Math.log(raw) / Math.LN10));
+    var norm = raw / mag;
+    var step = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 2.5 ? 2.5 : norm <= 5 ? 5 : 10;
+    return step * mag;
+  }
+
+  // Short money for axis labels: $120, -$40, $12.50
+  function fmtAxis(v){
+    var a = Math.abs(v);
+    var s = a % 1 === 0 ? String(a) : a.toFixed(2);
+    return (v < 0 ? '-$' : '$') + s;
+  }
+
   function profitChartSvg(series){
-    var W = 320, H = 190;
-    var padL = 42, padR = 10, padT = 12, padB = 26;
+    var W = 340, H = 216;
+    var padL = 46, padR = 12, padT = 10, padB = 36;
     var plotW = W - padL - padR;
     var plotH = H - padT - padB;
 
     var vals = series.map(function(s){ return s.cumulative; });
-    var hi = Math.max.apply(null, vals.concat([0]));
-    var lo = Math.min.apply(null, vals.concat([0]));
-    if (hi === lo){ hi += 10; lo -= 10; }
-    var pad = (hi - lo) * 0.12;
-    hi += pad; lo -= pad;
+    var rawHi = Math.max.apply(null, vals.concat([0]));
+    var rawLo = Math.min.apply(null, vals.concat([0]));
+    if (rawHi === rawLo){ rawHi += 10; rawLo -= 10; }
+
+    var step = niceStep(rawHi - rawLo, 4);
+    var hi = Math.ceil(rawHi / step) * step;
+    var lo = Math.floor(rawLo / step) * step;
+    if (hi === lo) hi = lo + step;
 
     function x(i){
       return series.length === 1
         ? padL + plotW / 2
         : padL + (i / (series.length - 1)) * plotW;
     }
-    function y(v){
-      return padT + (1 - (v - lo) / (hi - lo)) * plotH;
-    }
+    function y(v){ return padT + (1 - (v - lo) / (hi - lo)) * plotH; }
 
     var zeroY = y(0);
     var pts = series.map(function(s, i){ return x(i) + ',' + y(s.cumulative); });
-
-    // Shade between the line and break-even so winning and losing stretches read
-    // at a glance.
-    var area = 'M' + x(0) + ',' + zeroY + ' L' + pts.join(' L') +
-               ' L' + x(series.length - 1) + ',' + zeroY + ' Z';
-
     var last = series[series.length - 1].cumulative;
     var lineColor = last > 0 ? '#3fae66' : (last < 0 ? '#c94040' : '#7c847d');
 
+    // --- y axis: gridline + tick + label at every step ---
+    var yAxis = '';
+    for (var v = lo; v <= hi + step / 2; v += step){
+      var vy = y(v);
+      var isZero = Math.abs(v) < step / 1000;
+      yAxis +=
+        '<line x1="' + padL + '" y1="' + vy + '" x2="' + (W - padR) + '" y2="' + vy +
+          '" stroke="' + (isZero ? '#4a544c' : '#252b26') + '" stroke-width="1"' +
+          (isZero ? ' stroke-dasharray="3 3"' : '') + '/>' +
+        '<line x1="' + (padL - 4) + '" y1="' + vy + '" x2="' + padL + '" y2="' + vy +
+          '" stroke="#4a544c" stroke-width="1"/>' +
+        '<text x="' + (padL - 7) + '" y="' + (vy + 3.5) + '" fill="#7c847d" font-size="9.5" ' +
+          'text-anchor="end">' + fmtAxis(v) + '</text>';
+    }
+
+    // --- x axis: a tick per session, labels thinned once they'd collide ---
+    var labelEvery = Math.ceil(series.length / 8);
+    var xAxis = '';
+    series.forEach(function(s, i){
+      var px = x(i);
+      xAxis += '<line x1="' + px + '" y1="' + (padT + plotH) + '" x2="' + px + '" y2="' +
+               (padT + plotH + 4) + '" stroke="#4a544c" stroke-width="1"/>';
+      var isEdge = i === 0 || i === series.length - 1;
+      if (isEdge || i % labelEvery === 0){
+        xAxis += '<text x="' + px + '" y="' + (H - 17) + '" fill="#7c847d" font-size="9.5" ' +
+                 'text-anchor="middle">' + s.index + '</text>';
+      }
+    });
+
     var dots = series.map(function(s, i){
       return '<circle cx="' + x(i) + '" cy="' + y(s.cumulative) + '" r="' +
-             (series.length > 14 ? 2 : 3.2) + '" fill="' + lineColor + '"/>';
+             (series.length > 14 ? 2 : 3) + '" fill="' + lineColor + '"/>';
     }).join('');
-
-    var xLabels = '';
-    [0, series.length - 1].forEach(function(i, k){
-      if (k === 1 && series.length === 1) return;
-      xLabels += '<text x="' + x(i) + '" y="' + (H - 8) + '" fill="#7c847d" font-size="10" ' +
-                 'text-anchor="' + (k === 0 ? 'start' : 'end') + '">' + series[i].index + '</text>';
-    });
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
              'aria-label="Cumulative profit over ' + series.length + ' sessions">' +
-             '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY +
-               '" stroke="#333a34" stroke-width="1" stroke-dasharray="3 3"/>' +
-             '<path d="' + area + '" fill="' + lineColor + '" opacity="0.13"/>' +
+             yAxis +
+             '<path d="M' + x(0) + ',' + zeroY + ' L' + pts.join(' L') +
+               ' L' + x(series.length - 1) + ',' + zeroY + ' Z" fill="' + lineColor + '" opacity="0.13"/>' +
              '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + lineColor +
                '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' +
              dots +
-             // Skip an end label when it would collide with the $0 baseline.
-             (Math.abs(y(hi) - zeroY) > 15
-               ? '<text x="' + (padL - 6) + '" y="' + (y(hi) + 9) + '" fill="#7c847d" font-size="10" ' +
-                 'text-anchor="end">' + fmt(hi) + '</text>' : '') +
-             '<text x="' + (padL - 6) + '" y="' + (zeroY + 3) + '" fill="#7c847d" font-size="10" ' +
-               'text-anchor="end">$0</text>' +
-             (Math.abs(y(lo) - zeroY) > 15
-               ? '<text x="' + (padL - 6) + '" y="' + (y(lo) - 2) + '" fill="#7c847d" font-size="10" ' +
-                 'text-anchor="end">' + fmt(lo) + '</text>' : '') +
-             xLabels +
+             '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) +
+               '" stroke="#4a544c" stroke-width="1"/>' +
+             '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' +
+               (padT + plotH) + '" stroke="#4a544c" stroke-width="1"/>' +
+             xAxis +
+             '<text x="' + (padL + plotW / 2) + '" y="' + (H - 3) + '" fill="#5f665f" ' +
+               'font-size="9" text-anchor="middle">sessions played</text>' +
            '</svg>';
   }
 
-  function showPlayerGraph(rid){
-    var r = rosterById(rid);
-    if (!r) return;
-    var series = sessionsFor(rid);
-    var s = statsFor(rid);
+  function renderGraph(){
+    var sel = document.getElementById('graph-select');
+    var body = document.getElementById('graph-body');
+    var played = db.roster.filter(function(r){ return statsFor(r.id).sessions > 0; });
 
-    if (!series.length){
-      openModal({
-        title: r.name,
-        body: '<div class="chart-empty">No completed sessions yet, so there is nothing to plot. ' +
-              'Finish a game with <strong>End &amp; save</strong> and the line starts here.</div>',
-        buttons: [{ label: 'Close', cls:'btn-ghost', onClick: closeModal }]
-      });
+    if (!played.length){
+      sel.innerHTML = '';
+      body.innerHTML = '<div class="chart-empty">No completed sessions yet. Finish a game with ' +
+                       '<strong>End &amp; save</strong> and the first line starts here.</div>';
       return;
     }
+
+    played.sort(function(a,b){ return statsFor(b.id).sessions - statsFor(a.id).sessions; });
+    if (!played.some(function(r){ return r.id === db.graphRid; })) db.graphRid = played[0].id;
+
+    sel.innerHTML = played.map(function(r){
+      return '<button class="' + (r.id === db.graphRid ? 'active' : '') +
+             '" data-graphsel="' + r.id + '">' + escapeHtml(r.name) + '</button>';
+    }).join('');
+    sel.querySelectorAll('[data-graphsel]').forEach(function(btn){
+      btn.onclick = function(){
+        db.graphRid = Number(btn.getAttribute('data-graphsel'));
+        save();
+        renderGraph();
+      };
+    });
+
+    var r = rosterById(db.graphRid);
+    var series = sessionsFor(db.graphRid);
+    var s = statsFor(db.graphRid);
 
     var recent = series.slice(-6).reverse().map(function(x){
       var d = new Date(x.endedAt);
       var when = isNaN(d.getTime()) ? 'Session ' + x.index
         : d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
-      return '<div class="game-line" style="margin-top:6px;">' +
-               '<span class="nm">#' + x.index + ' &middot; ' + when +
+      var stakes = x.bb ? fmt(x.sb || 0) + '/' + fmt(x.bb) : 'stakes not set';
+      return '<div class="game-line" style="margin-top:7px;">' +
+               '<span class="nm">#' + x.index + ' &middot; ' + when + ' &middot; ' + stakes +
                  (x.location ? ' &middot; ' + escapeHtml(x.location) : '') + '</span>' +
-               '<span class="' + cls(x.net) + '">' + fmt(x.net) + ' &middot; ' + fmtRoi(x.roi) + '</span>' +
+               '<span class="' + cls(x.net) + '">' + fmt(x.net) +
+                 ' <span class="zero">/ ' + fmtRoi(x.roi) + '</span></span>' +
              '</div>';
     }).join('');
 
-    openModal({
-      title: r.name,
-      body:
-        '<div class="chart-wrap">' + profitChartSvg(series) + '</div>' +
-        '<div class="hint" style="text-align:center;">Cumulative profit &middot; x-axis is sessions played</div>' +
-        '<div class="chart-legend">' +
-          '<div class="cl"><div class="cl-label">Sessions</div>' +
-            '<div class="cl-val">' + s.sessions + '</div></div>' +
-          '<div class="cl"><div class="cl-label">Net</div>' +
-            '<div class="cl-val ' + cls(s.total) + '">' + fmt(s.total) + '</div></div>' +
-          '<div class="cl"><div class="cl-label">ROI</div>' +
-            '<div class="cl-val ' + cls(s.roi) + '">' + fmtRoi(s.roi) + '</div></div>' +
-        '</div>' +
-        '<div class="chart-legend" style="margin-top:8px;">' +
-          '<div class="cl"><div class="cl-label">Avg / game</div>' +
-            '<div class="cl-val ' + cls(s.avg) + '">' + fmt(s.avg) + '</div></div>' +
-          '<div class="cl"><div class="cl-label">Best</div>' +
-            '<div class="cl-val ' + cls(s.best) + '">' + fmt(s.best || 0) + '</div></div>' +
-          '<div class="cl"><div class="cl-label">BB/hr</div>' +
-            '<div class="cl-val ' + cls(s.bbPerHour) + '">' +
-              (s.bbPerHour === null ? '—' : fmtBB(s.bbPerHour)) + '</div></div>' +
-        '</div>' +
-        '<div style="margin-top:16px;"><span class="field-label">Recent sessions</span>' + recent + '</div>',
-      buttons: [{ label: 'Close', cls:'btn-ghost', onClick: closeModal }]
-    });
+    body.innerHTML =
+      '<div class="chart-title">' + escapeHtml(r.name) + '</div>' +
+      '<div class="chart-wrap">' + profitChartSvg(series) + '</div>' +
+      '<div class="hint" style="text-align:center;">Cumulative profit after each session</div>' +
+      '<div class="chart-legend">' +
+        '<div class="cl"><div class="cl-label">Sessions</div>' +
+          '<div class="cl-val">' + s.sessions + '</div></div>' +
+        '<div class="cl"><div class="cl-label">Net</div>' +
+          '<div class="cl-val ' + cls(s.total) + '">' + fmt(s.total) + '</div></div>' +
+        '<div class="cl"><div class="cl-label">ROI</div>' +
+          '<div class="cl-val ' + cls(s.roi) + '">' + fmtRoi(s.roi) + '</div></div>' +
+      '</div>' +
+      '<div class="chart-legend" style="margin-top:8px;">' +
+        '<div class="cl"><div class="cl-label">Avg / game</div>' +
+          '<div class="cl-val ' + cls(s.avg) + '">' + fmt(s.avg) + '</div></div>' +
+        '<div class="cl"><div class="cl-label">Best</div>' +
+          '<div class="cl-val ' + cls(s.best) + '">' + fmt(s.best || 0) + '</div></div>' +
+        '<div class="cl"><div class="cl-label">BB/hr</div>' +
+          '<div class="cl-val ' + cls(s.bbPerHour) + '">' +
+            (s.bbPerHour === null ? '—' : fmtBB(s.bbPerHour)) + '</div></div>' +
+      '</div>' +
+      '<div class="chart-sessions" style="margin-top:16px;">' +
+        '<span class="field-label">Recent sessions</span>' + recent + '</div>';
+  }
+
+  // The Graph button on a stats row just points this section at that player.
+  function showPlayerGraph(rid){
+    db.graphRid = rid;
+    save();
+    renderGraph();
+    var el = document.getElementById('graph-select');
+    if (el) el.scrollIntoView({ block:'start', behavior:'smooth' });
   }
 
   /* ---------------- edit a saved game ---------------- */
+
+  // Fills in what a game was missing after the fact: where it was played, the
+  // stakes, and how long it ran — the last one is what makes BB/hr computable
+  // for games recorded before the session clock existed.
+  function editHistoryGame(gameId){
+    var g = historyGameById(gameId);
+    if (!g) return;
+
+    var hoursNow = 0;
+    g.entries.forEach(function(e){
+      if (typeof e.hours === 'number' && e.hours > hoursNow) hoursNow = e.hours;
+    });
+
+    var known = {};
+    db.history.forEach(function(x){
+      var loc = (x.location || '').trim();
+      if (loc) known[loc.toLowerCase()] = loc;
+    });
+    var datalist = Object.keys(known).map(function(k){
+      return '<option value="' + escapeHtml(known[k]) + '">';
+    }).join('');
+
+    var d = new Date(g.endedAt);
+    var when = isNaN(d.getTime()) ? 'this game'
+      : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+
+    openModal({
+      title: 'Edit game',
+      body:
+        '<div style="margin-bottom:4px;">' + when + ' &middot; ' + g.entries.length + ' players</div>' +
+        '<span class="field-label" style="margin-top:12px;">Location</span>' +
+        '<input type="text" id="eg-loc" maxlength="40" style="margin-top:0;" list="eg-locs" ' +
+          'placeholder="Where was this played?" autocomplete="off" value="' + escapeHtml(g.location || '') + '">' +
+        '<datalist id="eg-locs">' + datalist + '</datalist>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">' +
+          '<div><span class="field-label">Small blind</span>' +
+            '<input type="number" inputmode="decimal" min="0" step="0.01" id="eg-sb" style="margin-top:0;" ' +
+              'placeholder="0.25" value="' + (g.sb === null || g.sb === undefined ? '' : g.sb) + '"></div>' +
+          '<div><span class="field-label">Big blind</span>' +
+            '<input type="number" inputmode="decimal" min="0" step="0.01" id="eg-bb" style="margin-top:0;" ' +
+              'placeholder="0.50" value="' + (g.bb === null || g.bb === undefined ? '' : g.bb) + '"></div>' +
+        '</div>' +
+        '<span class="field-label" style="margin-top:12px;">Session length (hours)</span>' +
+        '<input type="number" inputmode="decimal" min="0" step="0.25" id="eg-hours" style="margin-top:0;" ' +
+          'placeholder="e.g. 4.5" value="' + (hoursNow || '') + '">' +
+        '<div class="hint" style="margin-top:8px;">' +
+          'Blinds and length are what BB/hr is worked out from. Length applies to everyone ' +
+          'in this game; per-player buy-ins and stacks stay on each line\'s Edit button.' +
+        '</div>' +
+        '<div class="error" id="eg-error" style="display:none;"></div>',
+      focus: 'eg-loc',
+      buttons: [
+        { label: 'Save game', cls:'btn-primary', onClick: function(){
+            var err = document.getElementById('eg-error');
+            var sbRaw = document.getElementById('eg-sb').value;
+            var bbRaw = document.getElementById('eg-bb').value;
+            var hrRaw = document.getElementById('eg-hours').value;
+            var sb = sbRaw === '' ? null : parseFloat(sbRaw);
+            var bb = bbRaw === '' ? null : parseFloat(bbRaw);
+            var hrs = hrRaw === '' ? null : parseFloat(hrRaw);
+
+            if ((sb !== null && (isNaN(sb) || sb < 0)) || (bb !== null && (isNaN(bb) || bb < 0))){
+              err.textContent = 'Blinds have to be zero or more.';
+              err.style.display = 'block';
+              return;
+            }
+            if (hrs !== null && (isNaN(hrs) || hrs < 0)){
+              err.textContent = 'Session length has to be zero or more.';
+              err.style.display = 'block';
+              return;
+            }
+
+            g.location = document.getElementById('eg-loc').value.trim();
+            g.sb = sb;
+            g.bb = bb;
+            if (hrs !== null && hrs > 0){
+              g.entries.forEach(function(e){ e.hours = round2(hrs); });
+            } else if (hrs === 0 || hrs === null){
+              g.entries.forEach(function(e){ delete e.hours; });
+            }
+
+            closeModal();
+            save();
+            renderAll();
+            showToast('Game updated');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
 
   // Fixes an error after the fact: lets you correct any buy-in, add/remove a
   // rebuy, or change the final stack on a game that's already in history.
@@ -2852,6 +3052,7 @@
     renderPlan();
     renderSeats();
     renderHistory();
+    renderGraph();
     renderPay();
     save();
   }
