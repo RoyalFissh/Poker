@@ -1012,6 +1012,15 @@
     return '(' + sign + (Math.round(Math.abs(v) * 10) / 10).toFixed(1) + '%)';
   }
 
+  // "First L." — used in the Profit graph's tight spots (player selector,
+  // the Everyone chart's toggle chips and in-chart labels) so names don't
+  // crowd things out. The Stats table and Roster always show the full name.
+  function shortName(name){
+    var parts = String(name || '').trim().split(/\s+/);
+    if (parts.length < 2) return name;
+    return parts[0] + ' ' + parts[parts.length - 1].charAt(0).toUpperCase() + '.';
+  }
+
   function clampSize(n){
     n = parseInt(n, 10);
     if (isNaN(n)) return 8;
@@ -2548,6 +2557,43 @@
     renderHistory();
   }
 
+  // Player always stays the pinned first column (it carries the Graph button
+  // and its own nowrap/left-align CSS) — whatever's being sorted moves to
+  // right after it, so you see it without swiping, instead of always Net.
+  function orderedStatsColumns(){
+    var nameCol = STATS_COLUMNS.filter(function(c){ return c.key === 'name'; });
+    var activeCol = STATS_COLUMNS.filter(function(c){ return c.key === statsSortKey && c.key !== 'name'; });
+    var rest = STATS_COLUMNS.filter(function(c){ return c.key !== 'name' && c.key !== statsSortKey; });
+    return nameCol.concat(activeCol, rest);
+  }
+
+  function statsCellClass(x, key){
+    if (key === 'total' || key === 'roi' || key === 'bbPerHour' || key === 'avg' || key === 'best' || key === 'worst'){
+      return cls(x.s[key]);
+    }
+    return '';
+  }
+
+  function statsCellContent(x, key){
+    switch (key){
+      case 'name':
+        return '<div class="stat-name"><span>' + escapeHtml(x.r.name) + '</span>' +
+               '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button></div>';
+      case 'total': return fmt(x.s.total);
+      case 'roi': return fmtRoi(x.s.roi);
+      case 'bbPerHour': return x.s.bbPerHour === null ? '—' : fmtBB(x.s.bbPerHour);
+      case 'sessions': return String(x.s.sessions);
+      case 'rebuys': return String(x.s.rebuys);
+      case 'avgRebuys': return x.s.avgRebuys.toFixed(1);
+      case 'totalBuyin': return fmt(x.s.totalBuyin);
+      case 'avgBuyin': return fmt(x.s.avgBuyin);
+      case 'avg': return fmt(x.s.avg);
+      case 'best': return fmt(x.s.best || 0);
+      case 'worst': return fmt(x.s.worst || 0);
+    }
+    return '';
+  }
+
   function renderHistory(){
     // --- stats table ---
     var card = document.getElementById('stats-card');
@@ -2569,31 +2615,18 @@
         return statsSortDir === 'asc' ? av - bv : bv - av;
       });
 
+      var orderedCols = orderedStatsColumns();
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              STATS_COLUMNS.map(function(col){
+              orderedCols.map(function(col){
                 var arrow = statsSortKey === col.key ? (statsSortDir === 'asc' ? ' ▲' : ' ▼') : '';
                 return '<th class="sortable" data-sortkey="' + col.key + '">' + col.label + arrow + '</th>';
               }).join('') +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
-        h += '<tr>' +
-               '<td><div class="stat-name">' +
-                 '<span>' + escapeHtml(x.r.name) + '</span>' +
-                 '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button>' +
-               '</div></td>' +
-               '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
-               '<td class="' + cls(x.s.roi) + '">' + fmtRoi(x.s.roi) + '</td>' +
-               '<td class="' + cls(x.s.bbPerHour) + '">' +
-                 (x.s.bbPerHour === null ? '—' : fmtBB(x.s.bbPerHour)) + '</td>' +
-               '<td>' + x.s.sessions + '</td>' +
-               '<td>' + x.s.rebuys + '</td>' +
-               '<td>' + x.s.avgRebuys.toFixed(1) + '</td>' +
-               '<td>' + fmt(x.s.totalBuyin) + '</td>' +
-               '<td>' + fmt(x.s.avgBuyin) + '</td>' +
-               '<td class="' + cls(x.s.avg) + '">' + fmt(x.s.avg) + '</td>' +
-               '<td class="' + cls(x.s.best) + '">' + fmt(x.s.best || 0) + '</td>' +
-               '<td class="' + cls(x.s.worst) + '">' + fmt(x.s.worst || 0) + '</td>' +
-             '</tr>';
+        h += '<tr>' + orderedCols.map(function(col){
+          var c = statsCellClass(x, col.key);
+          return '<td' + (c ? ' class="' + c + '"' : '') + '>' + statsCellContent(x, col.key) + '</td>';
+        }).join('') + '</tr>';
       });
       h += '</tbody></table></div><div class="hint" style="margin-top:10px;">' +
            'Swipe the table sideways for the rest, or tap a header to sort by it. BB/hr counts ' +
@@ -2921,7 +2954,8 @@
   // easy to compare even if people joined the group at different times.
   function multiProfitChartSvg(items){
     var W = 340, H = 216;
-    var padL = 46, padR = 12, padT = 10, padB = 36;
+    // padR is wide — it's reserved space for each line's name label, not margin.
+    var padL = 46, padR = 56, padT = 10, padB = 36;
     var plotW = W - padL - padR;
     var plotH = H - padT - padB;
 
@@ -2973,6 +3007,25 @@
              '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
     }).join('');
 
+    // A name tag at each line's own last point, nudged apart vertically so
+    // two players ending at a similar profit don't land on top of each other.
+    var tags = items
+      .filter(function(it){ return it.series.length; })
+      .map(function(it){
+        var i = it.series.length - 1;
+        return { text:it.label, color:it.color, x:x(i), y:y(it.series[i].cumulative) };
+      })
+      .sort(function(a,b){ return a.y - b.y; });
+    var minGap = 11;
+    for (var k = 1; k < tags.length; k++){
+      if (tags[k].y - tags[k - 1].y < minGap) tags[k].y = tags[k - 1].y + minGap;
+    }
+    var labels = tags.map(function(t){
+      return '<text x="' + (t.x + 5) + '" y="' + (t.y + 3) + '" fill="' + t.color + '" ' +
+             'font-size="9" font-weight="700" paint-order="stroke" stroke="#141614" stroke-width="3">' +
+             escapeHtml(t.text) + '</text>';
+    }).join('');
+
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
              'aria-label="Cumulative profit for ' + items.length + ' players">' +
              yAxis +
@@ -2982,6 +3035,7 @@
                (padT + plotH) + '" stroke="#4a544c" stroke-width="1"/>' +
              xAxis +
              lines +
+             labels +
              '<text x="' + (padL + plotW / 2) + '" y="' + (H - 3) + '" fill="#5f665f" ' +
                'font-size="9" text-anchor="middle">sessions played</text>' +
            '</svg>';
@@ -3016,7 +3070,7 @@
       return '<button type="button" class="compare-chip' + (on ? ' on' : '') + '" ' +
              'data-compare="' + r.id + '" style="' + (on ? '--chip-color:' + color + ';' : '') + '">' +
              '<span class="compare-dot" style="background:' + (on ? color : 'var(--line)') + ';"></span>' +
-             escapeHtml(r.name) + '</button>';
+             escapeHtml(shortName(r.name)) + '</button>';
     }).join('');
 
     wrap.querySelectorAll('[data-compare]').forEach(function(btn){
@@ -3028,7 +3082,7 @@
     });
 
     var items = played
-      .map(function(r, i){ return { rid:r.id, color:compareColor(i), series:sessionsFor(r.id) }; })
+      .map(function(r, i){ return { rid:r.id, label:shortName(r.name), color:compareColor(i), series:sessionsFor(r.id) }; })
       .filter(function(it){ return !compareExcluded[it.rid]; });
 
     chart.innerHTML = items.length
@@ -3053,7 +3107,7 @@
 
     sel.innerHTML = played.map(function(r){
       return '<button class="' + (r.id === db.graphRid ? 'active' : '') +
-             '" data-graphsel="' + r.id + '">' + escapeHtml(r.name) + '</button>';
+             '" data-graphsel="' + r.id + '">' + escapeHtml(shortName(r.name)) + '</button>';
     }).join('');
     sel.querySelectorAll('[data-graphsel]').forEach(function(btn){
       btn.onclick = function(){
