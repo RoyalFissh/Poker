@@ -61,6 +61,19 @@ render functions per tab → graph → editors → `renderAll` → wiring.
   two don't compete; it is colour-coded only in its own stats column.
 - Prefer small inline SVG over any charting library.
 
+## Two gotchas that have cost real time
+
+- **Pages sends `Cache-Control: max-age=600`.** Browsers honour it for ten
+  minutes without even revalidating, and the `<meta http-equiv>` cache tags in
+  the file do not override it. So "close and reopen the app" is not a reliable
+  way for Kevin to pick up a fix. Once `curl` confirms the push is live, send
+  him a cache-busted link — `https://royalfissh.github.io/Poker/?fix2` — any
+  throwaway query string works, and his data survives because `localStorage` is
+  scoped to the origin, not the query string.
+- **iOS keeps a Safari tab's `localStorage` separate from a home-screen icon's**
+  for the same URL. If Kevin says his data vanished, ask which one he opened
+  before assuming a save bug. History → Backup & restore moves data between them.
+
 ## Testing
 
 Kevin has no node or python installed. To check a change, open `index.html` in a
