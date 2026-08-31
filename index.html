@@ -46,7 +46,7 @@
   .wrap{max-width:720px;margin:0 auto;padding:0 14px;}
 
   header{
-    padding:calc(env(safe-area-inset-top, 0px) + 8px) 16px 16px;
+    padding:calc(env(safe-area-inset-top, 0px) + 17px) 16px 16px;
     text-align:center;
     background:linear-gradient(180deg, var(--felt-900) 0%, rgba(13,46,30,0) 100%);
   }
@@ -308,6 +308,18 @@
     font-variant-numeric:tabular-nums;
   }
   .seat-reveal.idle{font-size:44px;color:var(--text-lo);}
+  .seat-reveal.spinning{color:var(--gold);}
+  .seat-reveal.spin-tick{animation:seatSpinTick 0.12s ease-out;}
+  .seat-reveal.landed{animation:seatLand 0.42s cubic-bezier(.34,1.56,.64,1);}
+  @keyframes seatSpinTick{
+    0%{transform:scale(1.1);}
+    100%{transform:scale(1);}
+  }
+  @keyframes seatLand{
+    0%{transform:scale(1.4);}
+    60%{transform:scale(0.94);}
+    100%{transform:scale(1);}
+  }
   .seat-sub{
     text-align:center;font-size:13px;color:var(--text-mid);
     margin:8px 0 14px;min-height:18px;
@@ -338,6 +350,8 @@
     color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
   }
   table.stats th:first-child,table.stats td:first-child{text-align:left;width:1%;white-space:nowrap;}
+  table.stats th.sortable{cursor:pointer;user-select:none;}
+  table.stats th.sortable:active{color:var(--text-hi);}
   table.stats td{padding:9px 0;text-align:right;border-bottom:1px solid rgba(51,58,52,0.5);}
   table.stats td:first-child{font-weight:600;}
   table.stats tr:last-child td{border-bottom:none;}
@@ -463,10 +477,18 @@
   .chart-legend .cl-label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
   .chart-legend .cl-val{font-size:14px;font-weight:700;margin-top:3px;}
   .chart-empty{font-size:12px;color:var(--text-lo);line-height:1.5;}
-  /* Keep "$45.00 / +(90.0)%" on one line — it reads as one figure. */
+  /* Keep "$45.00 — (+90.0%)" on one line — it reads as one figure. */
   .chart-sessions .game-line{align-items:baseline;}
   .chart-sessions .game-line > span:last-child{white-space:nowrap;flex:0 0 auto;}
   .chart-sessions .nm{font-size:12px;line-height:1.35;}
+  .compare-toggles{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;}
+  .compare-chip{
+    display:inline-flex;align-items:center;gap:6px;
+    background:transparent;border:1px solid var(--line);color:var(--text-lo);
+    border-radius:20px;padding:6px 11px;font-size:12px;font-weight:600;
+  }
+  .compare-chip.on{border-color:var(--chip-color, var(--felt-500));color:var(--text-hi);}
+  .compare-dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;}
 
   /* ---------- compact panels ----------
      Everything here is pinned to the Player stats table's scale: 13px body,
@@ -593,6 +615,7 @@
             <div class="clock-time idle" id="clock-time">Not started</div>
           </div>
           <div class="clock-btns">
+            <button class="btn-ghost" id="clock-pause" style="display:none;">Pause</button>
             <button class="btn-ghost" id="clock-stop" style="display:none;">Stop</button>
             <button class="btn-ghost" id="clock-btn">Start</button>
           </div>
@@ -763,6 +786,17 @@
         <div id="graph-body"></div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">Everyone</div>
+      <div class="card">
+        <div class="compare-toggles" id="compare-toggles"></div>
+        <div class="chart-wrap" id="compare-chart"></div>
+        <div class="hint" style="text-align:center;margin-top:8px;">
+          Cumulative profit by each player's own session number &mdash; tap a name to hide or show them.
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ HISTORY ============ -->
@@ -883,7 +917,7 @@
     roster: [],          // { id, name }
     colors: null,        // [{ key,label,css,value }]
     // { rid, buyins:[num] (always dollars), finalStack:num|null, stackMode:'chips'|'total', stackCounts, paid, joinedAt }
-    game: { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null, stoppedAt:null },
+    game: { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null, pausedAt:null },
     history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
@@ -939,7 +973,7 @@
 
   // A player who sat down late is only charged for their own time at the table.
   function playerHours(p){
-    return hoursSince(p.joinedAt || db.game.startedAt, db.game.stoppedAt);
+    return hoursSince(p.joinedAt || db.game.startedAt, db.game.pausedAt);
   }
 
   function fmtHours(h){
@@ -1065,7 +1099,7 @@
     if (typeof db.game.location !== 'string') db.game.location = '';
     if (!db.game.blinds || typeof db.game.blinds !== 'object') db.game.blinds = { sb:0.25, bb:0.50 };
     if (typeof db.game.startedAt !== 'string') db.game.startedAt = null;
-    if (typeof db.game.stoppedAt !== 'string') db.game.stoppedAt = null;
+    if (typeof db.game.pausedAt !== 'string') db.game.pausedAt = null;
     if (db.nextRosterId <= db.roster.length){
       db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
     }
@@ -1514,9 +1548,11 @@
     updateClock();
   }
 
+  // Three states: idle (Start only), running (Pause + Stop), paused (Resume + Stop).
   function updateClock(){
     var el = document.getElementById('clock-time');
     var btn = document.getElementById('clock-btn');
+    var pauseBtn = document.getElementById('clock-pause');
     var stopBtn = document.getElementById('clock-stop');
     if (!el) return;
 
@@ -1524,23 +1560,28 @@
       el.className = 'clock-time idle';
       el.textContent = 'Not started';
       btn.textContent = 'Start';
+      btn.style.display = '';
+      pauseBtn.style.display = 'none';
       stopBtn.style.display = 'none';
       return;
     }
 
-    var h = hoursSince(db.game.startedAt, db.game.stoppedAt);
+    var h = hoursSince(db.game.startedAt, db.game.pausedAt);
     var started = new Date(db.game.startedAt);
 
-    if (db.game.stoppedAt){
+    if (db.game.pausedAt){
       el.className = 'clock-time idle';
-      el.textContent = fmtHours(h) + ' · stopped';
+      el.textContent = fmtHours(h) + ' · paused';
       btn.textContent = 'Resume';
-      stopBtn.style.display = 'none';
+      btn.style.display = '';
+      pauseBtn.style.display = 'none';
+      stopBtn.style.display = '';
     } else {
       el.className = 'clock-time';
       el.textContent = fmtHours(h) + ' · since ' +
         started.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
-      btn.textContent = 'Restart';
+      btn.style.display = 'none';
+      pauseBtn.style.display = '';
       stopBtn.style.display = '';
     }
 
@@ -2002,7 +2043,7 @@
               location: db.game.location,
               blinds: db.game.blinds,
               startedAt: null,
-              stoppedAt: null
+              pausedAt: null
             };
             closeModal();
             renderAll();
@@ -2025,7 +2066,7 @@
               location: db.game.location,
               blinds: db.game.blinds,
               startedAt: null,
-              stoppedAt: null
+              pausedAt: null
             };
             closeModal();
             renderAll();
@@ -2093,20 +2134,31 @@
       return '<button type="button" class="swatch' + (p.css === c.css ? ' active' : '') + '" ' +
              'style="background:' + p.css + ';" data-swatch="' + p.css + '" ' +
              'data-swatchlabel="' + escapeHtml(p.label) + '" title="' + escapeHtml(p.label) + '"></button>';
-    }).join('') + '</div>';
+    }).join('') + '</div>' +
+      '<span class="field-label" style="margin-top:14px;">Or pick your own</span>' +
+      '<input type="color" id="cp-custom" value="' + c.css + '" ' +
+        'style="margin-top:8px;width:100%;height:42px;padding:2px;border:1px solid var(--line);border-radius:8px;">' +
+      '<span class="field-label" style="margin-top:12px;">Name</span>' +
+      '<input type="text" id="cp-label" maxlength="20" style="margin-top:0;" value="' + escapeHtml(c.label) + '">';
 
     openModal({
       title: 'Chip color',
       body: body,
-      buttons: [ { label:'Cancel', cls:'btn-ghost', onClick: closeModal } ]
+      buttons: [
+        { label: 'Save', cls:'btn-primary', onClick: function(){
+            c.css = document.getElementById('cp-custom').value;
+            c.label = document.getElementById('cp-label').value.trim() || c.label;
+            closeModal();
+            renderAll();
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
     });
 
     document.querySelectorAll('[data-swatch]').forEach(function(btn){
       btn.onclick = function(){
-        c.css = btn.getAttribute('data-swatch');
-        c.label = btn.getAttribute('data-swatchlabel');
-        closeModal();
-        renderAll();
+        document.getElementById('cp-custom').value = btn.getAttribute('data-swatch');
+        document.getElementById('cp-label').value = btn.getAttribute('data-swatchlabel');
       };
     });
   }
@@ -2367,6 +2419,10 @@
     renderSeats();
   }
 
+  // Delays get longer each tick, like a wheel losing momentum, so the draw
+  // reads as a spin instead of a flicker.
+  var SEAT_SPIN_DELAYS = [50, 50, 55, 60, 65, 75, 85, 100, 120, 150, 190];
+
   function drawSeat(){
     if (seatDrawing) return;
     var open = openSeats();
@@ -2379,24 +2435,34 @@
 
     seatDrawing = true;
     btn.disabled = true;
-    reveal.className = 'seat-reveal';
+    reveal.className = 'seat-reveal spinning';
     sub.textContent = 'Shuffling…';
 
-    var ticks = 0;
-    var timer = setInterval(function(){
+    var i = 0;
+    function tick(){
       reveal.textContent = open[rand(open.length)];
-      if (++ticks >= 11){
-        clearInterval(timer);
-        reveal.textContent = pick;
-        db.seats.taken.push({ seat: pick, name: '' });
-        db.seats.last = pick;
-        seatDrawing = false;
-        btn.disabled = false;
-        save();
-        renderSeats();
-        showToast('Seat ' + pick);
+      reveal.classList.remove('spin-tick');
+      void reveal.offsetWidth; // restart the pulse animation on every tick
+      reveal.classList.add('spin-tick');
+      i++;
+      if (i < SEAT_SPIN_DELAYS.length){
+        setTimeout(tick, SEAT_SPIN_DELAYS[i]);
+        return;
       }
-    }, 55);
+      reveal.textContent = pick;
+      db.seats.taken.push({ seat: pick, name: '' });
+      db.seats.last = pick;
+      seatDrawing = false;
+      btn.disabled = false;
+      save();
+      renderSeats();
+      var landed = document.getElementById('seat-reveal');
+      landed.classList.remove('landed');
+      void landed.offsetWidth;
+      landed.classList.add('landed');
+      showToast('Seat ' + pick);
+    }
+    tick();
   }
 
   function seatTapped(n){
@@ -2453,6 +2519,35 @@
 
   /* ---------------- render: history tab ---------------- */
 
+  // Player stats table columns — click a header to sort by it. `key` maps to
+  // a statsFor() field ('name' reads the roster name instead).
+  var STATS_COLUMNS = [
+    { key:'name',       label:'Player' },
+    { key:'total',      label:'Net' },
+    { key:'roi',        label:'ROI' },
+    { key:'bbPerHour',  label:'BB/hr' },
+    { key:'sessions',   label:'Games' },
+    { key:'rebuys',     label:'Rebuys' },
+    { key:'avgRebuys',  label:'RB/game' },
+    { key:'totalBuyin', label:'Total buy-in' },
+    { key:'avgBuyin',   label:'Buy-in/game' },
+    { key:'avg',        label:'Avg' },
+    { key:'best',       label:'Best' },
+    { key:'worst',      label:'Worst' }
+  ];
+  var statsSortKey = 'total';
+  var statsSortDir = 'desc';
+
+  function sortStatsBy(key){
+    if (statsSortKey === key){
+      statsSortDir = statsSortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+      statsSortKey = key;
+      statsSortDir = key === 'name' ? 'asc' : 'desc';
+    }
+    renderHistory();
+  }
+
   function renderHistory(){
     // --- stats table ---
     var card = document.getElementById('stats-card');
@@ -2463,17 +2558,27 @@
                        '<strong>End &amp; save</strong> and stats will build up here.</div>';
     } else {
       var rows = played.map(function(r){ return { r:r, s:statsFor(r.id) }; });
-      rows.sort(function(a,b){ return b.s.total - a.s.total; });
+      rows.sort(function(a,b){
+        if (statsSortKey === 'name'){
+          var cmp = a.r.name.localeCompare(b.r.name);
+          return statsSortDir === 'asc' ? cmp : -cmp;
+        }
+        var av = a.s[statsSortKey], bv = b.s[statsSortKey];
+        if (av === null || av === undefined) return 1;
+        if (bv === null || bv === undefined) return -1;
+        return statsSortDir === 'asc' ? av - bv : bv - av;
+      });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Net</th><th>ROI</th><th>BB/hr</th><th>Games</th><th>Rebuys</th><th>RB/game</th>' +
-              '<th>Total buy-in</th><th>Buy-in/game</th><th>Avg</th><th>Best</th><th>Worst</th>' +
+              STATS_COLUMNS.map(function(col){
+                var arrow = statsSortKey === col.key ? (statsSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+                return '<th class="sortable" data-sortkey="' + col.key + '">' + col.label + arrow + '</th>';
+              }).join('') +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
                '<td><div class="stat-name">' +
                  '<span>' + escapeHtml(x.r.name) + '</span>' +
-                 '<button class="btn-mini" data-statedit="' + x.r.id + '">Edit</button>' +
                  '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button>' +
                '</div></td>' +
                '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
@@ -2491,12 +2596,12 @@
              '</tr>';
       });
       h += '</tbody></table></div><div class="hint" style="margin-top:10px;">' +
-           'Swipe the table sideways for the rest. BB/hr counts only games played with ' +
-           'blinds and the session clock set.</div>';
+           'Swipe the table sideways for the rest, or tap a header to sort by it. BB/hr counts ' +
+           'only games played with blinds and the session clock set.</div>';
       card.innerHTML = h;
 
-      card.querySelectorAll('[data-statedit]').forEach(function(btn){
-        btn.onclick = function(){ editRosterPlayer(Number(btn.getAttribute('data-statedit'))); };
+      card.querySelectorAll('[data-sortkey]').forEach(function(th){
+        th.onclick = function(){ sortStatsBy(th.getAttribute('data-sortkey')); };
       });
       card.querySelectorAll('[data-statchart]').forEach(function(btn){
         btn.onclick = function(){ showPlayerGraph(Number(btn.getAttribute('data-statchart'))); };
@@ -2617,7 +2722,10 @@
                   (inGame(r.id) ? ' &middot; at the table now' : '') +
                   (r.venmo ? ' &middot; @' + escapeHtml(r.venmo) : '') + '</div>' +
                 '</div>' +
-                '<button class="btn-ghost" data-rename="' + r.id + '">Edit</button>' +
+                '<div style="display:flex;gap:6px;flex:0 0 auto;">' +
+                  '<button class="btn-ghost" data-rename="' + r.id + '">Edit</button>' +
+                  '<button class="btn-danger" data-rosterdel="' + r.id + '">Delete</button>' +
+                '</div>' +
               '</div>';
       });
       rc.innerHTML = rh;
@@ -2625,10 +2733,13 @@
       document.querySelectorAll('[data-rename]').forEach(function(btn){
         btn.onclick = function(){ editRosterPlayer(Number(btn.getAttribute('data-rename'))); };
       });
+      document.querySelectorAll('[data-rosterdel]').forEach(function(btn){
+        btn.onclick = function(){ deleteRosterPlayer(Number(btn.getAttribute('data-rosterdel'))); };
+      });
     }
   }
 
-  // Shared by the Roster list and the Edit button on each Player stats row.
+  // Used by the Edit button on each Roster row.
   function editRosterPlayer(rid){
     var r = rosterById(rid);
     if (!r) return;
@@ -2672,6 +2783,31 @@
               }},
               { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
             ]
+    });
+  }
+
+  function deleteRosterPlayer(rid){
+    var r = rosterById(rid);
+    if (!r) return;
+    if (inGame(rid)) return showToast('Remove them from tonight\'s game first');
+    var s = statsFor(rid);
+    openModal({
+      title: 'Delete ' + escapeHtml(r.name) + '?',
+      body: s.sessions
+        ? 'They have ' + s.sessions + ' game' + (s.sessions === 1 ? '' : 's') + ' in history. Those games ' +
+          'stay in Past games, but ' + escapeHtml(r.name) + ' drops out of Player stats and the Profit graph. ' +
+          'This cannot be undone.'
+        : 'Removes them from the roster. This cannot be undone.',
+      buttons: [
+        { label: 'Delete', cls:'btn-danger', onClick: function(){
+            db.roster = db.roster.filter(function(x){ return x.id !== rid; });
+            if (db.graphRid === rid) db.graphRid = null;
+            closeModal();
+            renderAll();
+            showToast(r.name + ' deleted');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
     });
   }
 
@@ -2780,6 +2916,126 @@
            '</svg>';
   }
 
+  // Every included player's cumulative line on one chart, x-axis aligned by
+  // each player's OWN session count (not calendar date) so trajectories are
+  // easy to compare even if people joined the group at different times.
+  function multiProfitChartSvg(items){
+    var W = 340, H = 216;
+    var padL = 46, padR = 12, padT = 10, padB = 36;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    var maxLen = items.reduce(function(m, it){ return Math.max(m, it.series.length); }, 1);
+    var vals = [0];
+    items.forEach(function(it){ it.series.forEach(function(s){ vals.push(s.cumulative); }); });
+    var rawHi = Math.max.apply(null, vals);
+    var rawLo = Math.min.apply(null, vals);
+    if (rawHi === rawLo){ rawHi += 10; rawLo -= 10; }
+
+    var step = niceStep(rawHi - rawLo, 4);
+    var hi = Math.ceil(rawHi / step) * step;
+    var lo = Math.floor(rawLo / step) * step;
+    if (hi === lo) hi = lo + step;
+
+    function x(i){ return maxLen === 1 ? padL + plotW / 2 : padL + (i / (maxLen - 1)) * plotW; }
+    function y(v){ return padT + (1 - (v - lo) / (hi - lo)) * plotH; }
+
+    var yAxis = '';
+    for (var v = lo; v <= hi + step / 2; v += step){
+      var vy = y(v);
+      var isZero = Math.abs(v) < step / 1000;
+      yAxis +=
+        '<line x1="' + padL + '" y1="' + vy + '" x2="' + (W - padR) + '" y2="' + vy +
+          '" stroke="' + (isZero ? '#4a544c' : '#252b26') + '" stroke-width="1"' +
+          (isZero ? ' stroke-dasharray="3 3"' : '') + '/>' +
+        '<line x1="' + (padL - 4) + '" y1="' + vy + '" x2="' + padL + '" y2="' + vy +
+          '" stroke="#4a544c" stroke-width="1"/>' +
+        '<text x="' + (padL - 7) + '" y="' + (vy + 3.5) + '" fill="#7c847d" font-size="9.5" ' +
+          'text-anchor="end">' + fmtAxis(v) + '</text>';
+    }
+
+    var labelEvery = Math.ceil(maxLen / 8);
+    var xAxis = '';
+    for (var i = 0; i < maxLen; i++){
+      var px = x(i);
+      xAxis += '<line x1="' + px + '" y1="' + (padT + plotH) + '" x2="' + px + '" y2="' +
+               (padT + plotH + 4) + '" stroke="#4a544c" stroke-width="1"/>';
+      var isEdge = i === 0 || i === maxLen - 1;
+      if (isEdge || i % labelEvery === 0){
+        xAxis += '<text x="' + px + '" y="' + (H - 17) + '" fill="#7c847d" font-size="9.5" ' +
+                 'text-anchor="middle">' + (i + 1) + '</text>';
+      }
+    }
+
+    var lines = items.map(function(it){
+      var pts = it.series.map(function(s, i){ return x(i) + ',' + y(s.cumulative); });
+      return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + it.color +
+             '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+    }).join('');
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
+             'aria-label="Cumulative profit for ' + items.length + ' players">' +
+             yAxis +
+             '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) +
+               '" stroke="#4a544c" stroke-width="1"/>' +
+             '<line x1="' + padL + '" y1="' + (padT + plotH) + '" x2="' + (W - padR) + '" y2="' +
+               (padT + plotH) + '" stroke="#4a544c" stroke-width="1"/>' +
+             xAxis +
+             lines +
+             '<text x="' + (padL + plotW / 2) + '" y="' + (H - 3) + '" fill="#5f665f" ' +
+               'font-size="9" text-anchor="middle">sessions played</text>' +
+           '</svg>';
+  }
+
+  // Deterministic, evenly-spread hues (golden angle) instead of literal
+  // randomness, so colors stay distinguishable and stable across renders.
+  function compareColor(i){
+    return 'hsl(' + Math.round((i * 137.508) % 360) + ', 62%, 56%)';
+  }
+
+  var compareExcluded = {}; // rid -> true when hidden from the "Everyone" chart
+
+  function renderCompareGraph(){
+    var wrap = document.getElementById('compare-toggles');
+    var chart = document.getElementById('compare-chart');
+    if (!wrap || !chart) return;
+
+    var played = db.roster
+      .filter(function(r){ return statsFor(r.id).sessions > 0; })
+      .sort(function(a,b){ return a.id - b.id; });
+
+    if (!played.length){
+      wrap.innerHTML = '';
+      chart.innerHTML = '<div class="chart-empty">No completed sessions yet.</div>';
+      return;
+    }
+
+    wrap.innerHTML = played.map(function(r, i){
+      var on = !compareExcluded[r.id];
+      var color = compareColor(i);
+      return '<button type="button" class="compare-chip' + (on ? ' on' : '') + '" ' +
+             'data-compare="' + r.id + '" style="' + (on ? '--chip-color:' + color + ';' : '') + '">' +
+             '<span class="compare-dot" style="background:' + (on ? color : 'var(--line)') + ';"></span>' +
+             escapeHtml(r.name) + '</button>';
+    }).join('');
+
+    wrap.querySelectorAll('[data-compare]').forEach(function(btn){
+      btn.onclick = function(){
+        var rid = Number(btn.getAttribute('data-compare'));
+        compareExcluded[rid] = !compareExcluded[rid];
+        renderCompareGraph();
+      };
+    });
+
+    var items = played
+      .map(function(r, i){ return { rid:r.id, color:compareColor(i), series:sessionsFor(r.id) }; })
+      .filter(function(it){ return !compareExcluded[it.rid]; });
+
+    chart.innerHTML = items.length
+      ? multiProfitChartSvg(items)
+      : '<div class="chart-empty">Nothing selected &mdash; tap a name above to show it.</div>';
+  }
+
   function renderGraph(){
     var sel = document.getElementById('graph-select');
     var body = document.getElementById('graph-body');
@@ -2820,7 +3076,7 @@
                '<span class="nm">#' + x.index + ' &middot; ' + when + ' &middot; ' + stakes +
                  (x.location ? ' &middot; ' + escapeHtml(x.location) : '') + '</span>' +
                '<span class="' + cls(x.net) + '">' + fmt(x.net) +
-                 ' <span class="' + cls(x.roi) + '">' + fmtRoi(x.roi) + '</span></span>' +
+                 ' &mdash; <span class="' + cls(x.roi) + '">' + fmtRoi(x.roi) + '</span></span>' +
              '</div>';
     }).join('');
 
@@ -3186,6 +3442,7 @@
     renderSeats();
     renderHistory();
     renderGraph();
+    renderCompareGraph();
     renderPay();
     save();
   }
@@ -3227,50 +3484,54 @@
   document.getElementById('clock-btn').onclick = function(){
     if (!db.game.startedAt){
       db.game.startedAt = new Date().toISOString();
-      db.game.stoppedAt = null;
+      db.game.pausedAt = null;
       save();
       updateClock();
       return showToast('Session clock started');
     }
-    if (db.game.stoppedAt){
+    if (db.game.pausedAt){
       // Shift startedAt (and every player's own joinedAt) forward by however
-      // long the clock sat stopped, so the paused stretch doesn't count toward BB/hr.
-      var pausedMs = Date.now() - new Date(db.game.stoppedAt).getTime();
+      // long the clock sat paused, so the paused stretch doesn't count toward BB/hr.
+      var pausedMs = Date.now() - new Date(db.game.pausedAt).getTime();
       db.game.startedAt = new Date(new Date(db.game.startedAt).getTime() + pausedMs).toISOString();
       db.game.players.forEach(function(p){
         if (p.joinedAt) p.joinedAt = new Date(new Date(p.joinedAt).getTime() + pausedMs).toISOString();
       });
-      db.game.stoppedAt = null;
+      db.game.pausedAt = null;
       save();
       updateClock();
-      return showToast('Session clock resumed');
+      showToast('Session clock resumed');
     }
+  };
+
+  document.getElementById('clock-pause').onclick = function(){
+    if (!db.game.startedAt || db.game.pausedAt) return;
+    db.game.pausedAt = new Date().toISOString();
+    save();
+    updateClock();
+    showToast('Session clock paused');
+  };
+
+  // A full Stop, unlike Pause, ends timing for the whole table — there's no
+  // Resume from here, so it asks first.
+  document.getElementById('clock-stop').onclick = function(){
+    if (!db.game.startedAt) return;
     openModal({
-      title: 'Restart the clock?',
-      body: 'Sets the session start to right now. Everyone\'s BB/hr is recalculated ' +
-            'from this moment, so only do it if the clock was started at the wrong time.',
+      title: 'Stop the session clock?',
+      body: 'Ends timing for everyone at the table. BB/hr won\'t track again until you hit Start.',
       buttons: [
-        { label: 'Restart from now', cls:'btn-danger', onClick: function(){
-            var now = new Date().toISOString();
-            db.game.startedAt = now;
-            db.game.stoppedAt = null;
-            db.game.players.forEach(function(p){ p.joinedAt = now; });
+        { label: 'Stop clock', cls:'btn-danger', onClick: function(){
+            db.game.startedAt = null;
+            db.game.pausedAt = null;
+            db.game.players.forEach(function(p){ p.joinedAt = null; });
             closeModal();
             save();
             updateClock();
-            showToast('Clock restarted');
+            showToast('Session clock stopped');
         }},
         { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
       ]
     });
-  };
-
-  document.getElementById('clock-stop').onclick = function(){
-    if (!db.game.startedAt || db.game.stoppedAt) return;
-    db.game.stoppedAt = new Date().toISOString();
-    save();
-    updateClock();
-    showToast('Session clock stopped');
   };
 
   attachCombo('name-input', 'name-list', playerSuggestions, function(){

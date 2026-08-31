@@ -67,7 +67,21 @@ render functions per tab → graph → editors → `renderAll` → wiring.
   Tab order is Table, Chips, Seats, Stats, History, Pay. History is just Past
   games / Roster / Backup &amp; restore now. The Graph button on a stats row
   (`showPlayerGraph`) just scrolls to the Profit graph card within the same
-  Stats tab — it doesn't switch tabs, since both live together now.
+  Stats tab — it doesn't switch tabs, since both live together now. There's no
+  Edit button on a stats row anymore — Kevin edits a player from the Roster
+  list in History instead; don't re-add it there.
+- **Player stats columns are click-to-sort**, not a separate filter control —
+  clicking a `<th>` toggles `statsSortKey`/`statsSortDir` and re-renders.
+  Kevin asked for "ascending/descending by any column" and this was judged
+  the more idiomatic UI than a dropdown.
+- **Session clock is a three-state machine**: idle → Start; running → Pause
+  + Stop; paused → Resume + Stop. `db.game.pausedAt` freezes elapsed time
+  (and BB/hr) without losing it; Resume shifts `startedAt` and every player's
+  `joinedAt` forward by the paused duration so that stretch doesn't count.
+  Stop is the one that actually ends the session — it clears `startedAt`,
+  `pausedAt`, and every player's `joinedAt`, and confirms first since it's
+  not resumable. Kevin was explicit these are two different things: Pause
+  ≠ Stop, don't collapse them back into one control.
 - Prefer small inline SVG over any charting library.
 
 ## Two gotchas that have cost real time
