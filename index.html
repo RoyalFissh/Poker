@@ -324,7 +324,7 @@
 
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:800px;}
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:1010px;}
   table.stats th{white-space:nowrap;}
   table.stats th{
     text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
@@ -352,8 +352,6 @@
     display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;
     font-size:11px;color:var(--text-lo);margin-top:3px;
   }
-  .game-line-sub .paid-toggle{display:flex;align-items:center;gap:5px;cursor:pointer;}
-  .game-line-sub .paid-toggle input{width:14px;height:14px;}
   .game-line-sub button{padding:4px 9px;font-size:11px;margin-left:auto;}
 
   .edit-buyin-row{display:flex;gap:8px;align-items:center;margin-top:7px;}
@@ -400,6 +398,103 @@
   }
   .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px);}
 
+  /* ---------- tonight's game: location, blinds, clock ---------- */
+  .combo{position:relative;}
+  .combo-list{
+    position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;
+    background:var(--ink-2);border:1px solid var(--felt-700);border-radius:8px;
+    max-height:196px;overflow-y:auto;display:none;
+    box-shadow:0 10px 22px rgba(0,0,0,0.55);
+  }
+  .combo-list.show{display:block;}
+  .combo-item{
+    padding:9px 11px;font-size:13px;color:var(--text-hi);
+    border-bottom:1px solid rgba(51,58,52,0.5);cursor:pointer;
+  }
+  .combo-item:last-child{border-bottom:none;}
+  .combo-item small{display:block;color:var(--text-lo);font-size:11px;margin-top:2px;}
+  .combo-item:active{background:var(--felt-800);}
+  .blind-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px;}
+  .clock-row{
+    display:flex;align-items:center;gap:10px;margin-top:12px;
+    padding-top:12px;border-top:1px solid var(--line);
+  }
+  .clock-row .clock-main{flex:1;min-width:0;}
+  .clock-time{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .clock-time.idle{color:var(--text-lo);font-size:14px;font-weight:600;}
+  .clock-row button{flex:0 0 auto;}
+  .bbhr{font-size:12px;color:var(--text-lo);font-weight:600;}
+  .bbhr b{font-weight:700;}
+
+  /* ---------- stats row controls + player graph ---------- */
+  .stat-name{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  .btn-mini{
+    background:transparent;border:1px solid var(--line);color:var(--text-mid);
+    border-radius:5px;padding:3px 7px;font-size:10px;font-weight:600;
+  }
+  .btn-mini:active{border-color:var(--felt-500);color:var(--text-hi);}
+  .chart-wrap{margin:4px 0 2px;}
+  .chart-wrap svg{width:100%;height:auto;display:block;}
+  .chart-legend{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;
+  }
+  .chart-legend .cl{background:var(--ink-2);border-radius:7px;padding:9px 10px;text-align:center;}
+  .chart-legend .cl-label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
+  .chart-legend .cl-val{font-size:14px;font-weight:700;margin-top:3px;}
+  .chart-empty{font-size:12px;color:var(--text-lo);line-height:1.5;}
+
+  /* ---------- compact panels ----------
+     History is the size Kevin wants; Table / Chips / Seats / Pay were built
+     bigger, so scale their chrome down to match. Text inputs stay at 16px on
+     purpose — anything smaller makes iOS Safari zoom in on focus. */
+  .panel.compact .section{margin-top:16px;}
+  .panel.compact .section-title{font-size:11px;margin-bottom:8px;}
+  .panel.compact .card{padding:12px;}
+  .panel.compact .hint{font-size:11px;}
+  .panel.compact .empty{font-size:13px;padding:22px 12px;}
+  .panel.compact .field-label{font-size:10px;margin-bottom:4px;}
+  .panel.compact input[type=text],
+  .panel.compact input[type=number]{padding:8px 10px;}
+  .panel.compact .btn-primary{padding:9px 14px;font-size:13px;}
+  .panel.compact .btn-gold{padding:9px 14px;font-size:13px;}
+  .panel.compact .btn-ghost{padding:8px 11px;font-size:12px;}
+  .panel.compact .btn-danger{padding:5px 9px;font-size:11px;}
+  .panel.compact .toolbar{margin-top:16px;}
+  .panel.compact .player-row{padding:11px 12px;}
+  .panel.compact .player-name{font-size:14px;}
+  .panel.compact .rebuy-list{font-size:11px;}
+  .panel.compact .net{font-size:13px;}
+  .panel.compact .net-label{font-size:10px;}
+  .panel.compact .bbhr{font-size:11px;}
+  .panel.compact .stack-mode-btn{padding:4px 9px;font-size:10px;}
+  .panel.compact .chip-cell .chip-cap{font-size:9px;}
+  .panel.compact .chip-cell input{font-size:14px;padding:6px 3px;}
+  .panel.compact .chip-total{font-size:12px;}
+  .panel.compact .stat{padding:10px 12px;}
+  .panel.compact .stat-label{font-size:10px;}
+  .panel.compact .stat-value{font-size:17px;}
+  .panel.compact .settle-row{padding:8px 11px;font-size:13px;}
+  .panel.compact .settle-note{font-size:11px;}
+  .panel.compact .clock-time{font-size:15px;}
+  .panel.compact .denom-name,
+  .panel.compact .plan-name{font-size:13px;}
+  .panel.compact .denom-row input{font-size:14px;}
+  .panel.compact .plan-sub{font-size:10px;}
+  .panel.compact .stepper button{width:29px;height:33px;font-size:16px;}
+  .panel.compact .stepper input{width:48px;font-size:14px;padding:7px 2px;}
+  .panel.compact .plan-total .val{font-size:19px;}
+  .panel.compact .plan-note{font-size:12px;}
+  .panel.compact .plan-bulk{font-size:11.5px;}
+  .panel.compact .size-btn{padding:10px 0;font-size:14px;}
+  .panel.compact .seat-reveal{font-size:56px;}
+  .panel.compact .seat-reveal.idle{font-size:38px;}
+  .panel.compact .seat-sub{font-size:12px;}
+  .panel.compact #seat-draw{padding:13px;font-size:15px;}
+  .panel.compact .seat-tile{padding:8px 3px;}
+  .panel.compact .seat-tile .n{font-size:16px;}
+  .panel.compact .venmo-qr{padding:13px;}
+  .panel.compact .venmo-qr img{width:190px;height:190px;}
+
   /* ---------- pay tab ---------- */
   .venmo-qr{
     background:#fff;border-radius:14px;padding:16px;
@@ -426,13 +521,44 @@
 <div class="wrap">
 
   <!-- ============ TABLE ============ -->
-  <div class="panel active" id="panel-table">
+  <div class="panel compact active" id="panel-table">
+
+    <div class="section">
+      <div class="section-title">Tonight's game</div>
+      <div class="card">
+        <div class="combo">
+          <span class="field-label">Location</span>
+          <input id="loc-input" type="text" placeholder="Where are you playing?" maxlength="40" autocomplete="off">
+          <div class="combo-list" id="loc-list"></div>
+        </div>
+        <div class="blind-grid">
+          <div>
+            <span class="field-label">Small blind</span>
+            <input id="sb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.25">
+          </div>
+          <div>
+            <span class="field-label">Big blind</span>
+            <input id="bb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.50">
+          </div>
+        </div>
+        <div class="clock-row">
+          <div class="clock-main">
+            <span class="field-label">Session clock</span>
+            <div class="clock-time idle" id="clock-time">Not started</div>
+          </div>
+          <button class="btn-ghost" id="clock-btn">Start</button>
+        </div>
+      </div>
+    </div>
 
     <div class="section">
       <div class="section-title">Add a player</div>
       <div class="card">
         <div class="add-row">
-          <div class="name-wrap"><input id="name-input" type="text" placeholder="Player name" maxlength="24" autocomplete="off"></div>
+          <div class="name-wrap combo">
+            <input id="name-input" type="text" placeholder="Player name" maxlength="24" autocomplete="off">
+            <div class="combo-list" id="name-list"></div>
+          </div>
           <div class="amt-wrap" id="add-amt-wrap">
             <input id="buyin-input" type="number" inputmode="decimal" placeholder="Buy-in $" min="0" step="0.01">
           </div>
@@ -485,7 +611,7 @@
   </div>
 
   <!-- ============ CHIPS ============ -->
-  <div class="panel" id="panel-chips">
+  <div class="panel compact" id="panel-chips">
     <div class="section">
       <div class="section-title">Chip values</div>
       <div class="card">
@@ -535,7 +661,7 @@
   </div>
 
   <!-- ============ SEATS ============ -->
-  <div class="panel" id="panel-seats">
+  <div class="panel compact" id="panel-seats">
     <div class="section">
       <div class="section-title">Table size</div>
       <div class="card">
@@ -611,7 +737,7 @@
   </div>
 
   <!-- ============ PAY ============ -->
-  <div class="panel" id="panel-pay">
+  <div class="panel compact" id="panel-pay">
     <div class="section">
       <div class="section-title">Your Venmo</div>
       <div class="card">
@@ -676,8 +802,8 @@
   var db = {
     roster: [],          // { id, name }
     colors: null,        // [{ key,label,css,value }]
-    // { rid, buyins:[num] (always dollars), finalStack:num|null, stackMode:'chips'|'total', stackCounts, paid }
-    game: { players: [] },
+    // { rid, buyins:[num] (always dollars), finalStack:num|null, stackMode:'chips'|'total', stackCounts, paid, joinedAt }
+    game: { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null },
     history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
@@ -710,6 +836,59 @@
     if (!v && v !== 0) return '';
     if (v < 1) return Math.round(v * 100) + '¢';
     return v % 1 === 0 ? '$' + v : '$' + v.toFixed(2);
+  }
+
+  /* ---------------- session clock + big blinds ---------------- */
+
+  function bigBlind(){
+    var v = parseFloat(db.game.blinds && db.game.blinds.bb);
+    return (!isNaN(v) && v > 0) ? v : 0;
+  }
+
+  function hoursSince(iso){
+    if (!iso) return 0;
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return 0;
+    var h = (Date.now() - t) / 3600000;
+    return h > 0 ? h : 0;
+  }
+
+  // A player who sat down late is only charged for their own time at the table.
+  function playerHours(p){
+    return hoursSince(p.joinedAt || db.game.startedAt);
+  }
+
+  function fmtHours(h){
+    if (!h) return '0m';
+    var mins = Math.round(h * 60);
+    var hh = Math.floor(mins / 60);
+    var mm = mins % 60;
+    return hh ? hh + 'h ' + mm + 'm' : mm + 'm';
+  }
+
+  // Big blinds won per hour — the standard way to compare sessions at different
+  // stakes. Needs a big blind, a clock, and a cashed-out player to mean anything.
+  function bbPerHour(p){
+    var bb = bigBlind();
+    var h = playerHours(p);
+    var net = netOf(p);
+    if (!bb || net === null || h < 0.05) return null;
+    return (net / bb) / h;
+  }
+
+  function fmtBB(v){
+    return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1);
+  }
+
+  // Net as a percentage of everything put on the table.
+  function roiOf(net, totalIn){
+    if (!totalIn) return null;
+    return (net / totalIn) * 100;
+  }
+
+  function fmtRoi(v){
+    if (v === null || v === undefined) return '—';
+    return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1) + '%';
   }
 
   function clampSize(n){
@@ -795,6 +974,9 @@
     if (!Array.isArray(db.roster)) db.roster = [];
     if (!Array.isArray(db.history)) db.history = [];
     if (!db.game || !Array.isArray(db.game.players)) db.game = { players: [] };
+    if (typeof db.game.location !== 'string') db.game.location = '';
+    if (!db.game.blinds || typeof db.game.blinds !== 'object') db.game.blinds = { sb:0.25, bb:0.50 };
+    if (typeof db.game.startedAt !== 'string') db.game.startedAt = null;
     if (db.nextRosterId <= db.roster.length){
       db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
     }
@@ -864,8 +1046,43 @@
     return db.game.players.some(function(p){ return p.rid === rid; });
   }
 
+  // Oldest game first — history is stored newest-first, and the graph needs
+  // sessions in the order they were actually played.
+  function sessionsFor(rid){
+    var out = [];
+    db.history.forEach(function(g){
+      g.entries.forEach(function(e){
+        if (e.rid !== rid) return;
+        var tin = entryTotalIn(e);
+        out.push({
+          gameId: g.id,
+          endedAt: g.endedAt,
+          location: g.location || '',
+          net: e.net,
+          totalIn: tin,
+          roi: roiOf(e.net, tin),
+          hours: typeof e.hours === 'number' ? e.hours : null,
+          bb: typeof g.bb === 'number' ? g.bb : null
+        });
+      });
+    });
+    out.sort(function(a,b){
+      var ta = new Date(a.endedAt).getTime(), tb = new Date(b.endedAt).getTime();
+      if (isNaN(ta) || isNaN(tb)) return a.gameId - b.gameId;
+      return ta - tb;
+    });
+    var run = 0;
+    out.forEach(function(s, i){
+      run = round2(run + s.net);
+      s.cumulative = run;
+      s.index = i + 1;
+    });
+    return out;
+  }
+
   function statsFor(rid){
     var sessions = 0, total = 0, best = null, worst = null, totalBuyin = 0, rebuys = 0;
+    var bbWon = 0, bbHours = 0;
     db.history.forEach(function(g){
       g.entries.forEach(function(e){
         if (e.rid !== rid) return;
@@ -876,6 +1093,11 @@
         var buyins = entryBuyins(e);
         totalBuyin += buyins.reduce(function(s,b){ return s + b; }, 0);
         rebuys += Math.max(0, buyins.length - 1);
+        // Only games recorded with both a big blind and a clock can feed BB/hr.
+        if (typeof e.hours === 'number' && e.hours > 0 && typeof g.bb === 'number' && g.bb > 0){
+          bbWon += e.net / g.bb;
+          bbHours += e.hours;
+        }
       });
     });
     return {
@@ -887,8 +1109,97 @@
       totalBuyin: round2(totalBuyin),
       rebuys: rebuys,
       avgRebuys: sessions ? Math.round((rebuys / sessions) * 10) / 10 : 0,
-      avgBuyin: sessions ? round2(totalBuyin / sessions) : 0
+      avgBuyin: sessions ? round2(totalBuyin / sessions) : 0,
+      roi: roiOf(total, totalBuyin),
+      hours: round2(bbHours),
+      bbPerHour: bbHours > 0 ? bbWon / bbHours : null
     };
+  }
+
+  /* ---------------- type-ahead dropdown ---------------- */
+
+  // `source(query)` returns [{ value, label, sub }]. Picking one writes it into
+  // the input and calls onPick. Mousedown (not click) so the list survives blur.
+  function attachCombo(inputId, listId, source, onPick){
+    var input = document.getElementById(inputId);
+    var list = document.getElementById(listId);
+    if (!input || !list) return;
+
+    function hide(){ list.classList.remove('show'); }
+
+    function show(){
+      var q = input.value.trim().toLowerCase();
+      // Nothing typed yet: stay out of the way of the buttons underneath.
+      if (!q) return hide();
+      var items = source(q).slice(0, 8);
+      if (!items.length) return hide();
+      list.innerHTML = items.map(function(it, i){
+        return '<div class="combo-item" data-combo="' + i + '">' + escapeHtml(it.label) +
+               (it.sub ? '<small>' + escapeHtml(it.sub) + '</small>' : '') + '</div>';
+      }).join('');
+      list.querySelectorAll('[data-combo]').forEach(function(el){
+        el.addEventListener('mousedown', function(ev){
+          ev.preventDefault();
+          var it = items[Number(el.getAttribute('data-combo'))];
+          input.value = it.value;
+          hide();
+          if (onPick) onPick(it);
+        });
+      });
+      list.classList.add('show');
+    }
+
+    input.addEventListener('input', show);
+    input.addEventListener('focus', show);
+    input.addEventListener('blur', function(){ setTimeout(hide, 150); });
+    input.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === 'Escape') hide(); });
+  }
+
+  // Everyone in the roster who isn't already seated, best match first.
+  function playerSuggestions(q){
+    return db.roster
+      .filter(function(r){
+        if (inGame(r.id)) return false;
+        return !q || r.name.toLowerCase().indexOf(q) !== -1;
+      })
+      .map(function(r){
+        var s = statsFor(r.id);
+        return {
+          value: r.name,
+          label: r.name,
+          sub: s.sessions
+            ? s.sessions + ' session' + (s.sessions === 1 ? '' : 's') + ' · ' + fmt(s.total) + ' lifetime'
+            : 'no games yet',
+          rank: q ? r.name.toLowerCase().indexOf(q) : 0,
+          sessions: s.sessions
+        };
+      })
+      .sort(function(a,b){
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        return b.sessions - a.sessions;
+      });
+  }
+
+  function locationSuggestions(q){
+    var seen = {}, out = [];
+    db.history.forEach(function(g){
+      var loc = (g.location || '').trim();
+      if (!loc) return;
+      var k = loc.toLowerCase();
+      if (seen[k]){ seen[k].count++; return; }
+      seen[k] = { value: loc, label: loc, count: 1 };
+      out.push(seen[k]);
+    });
+    return out
+      .filter(function(o){ return !q || o.label.toLowerCase().indexOf(q) !== -1; })
+      .sort(function(a,b){ return b.count - a.count; })
+      .map(function(o){
+        return {
+          value: o.value,
+          label: o.label,
+          sub: o.count + ' game' + (o.count === 1 ? '' : 's') + ' here'
+        };
+      });
   }
 
   /* ---------------- venmo ---------------- */
@@ -1056,6 +1367,13 @@
     return e.buyins || (e.totalIn !== undefined ? [e.totalIn] : []);
   }
 
+  // Saved games store the name as it was that night; when the player is still in
+  // the roster their current name wins, so a rename reaches every past game.
+  function entryName(e){
+    var r = rosterById(e.rid);
+    return r ? r.name : e.name;
+  }
+
   function entryTotalIn(e){
     return round2(entryBuyins(e).reduce(function(s,b){ return s + b; }, 0));
   }
@@ -1074,6 +1392,41 @@
   }
 
   /* ---------------- render: table tab ---------------- */
+
+  function renderGameMeta(){
+    var loc = document.getElementById('loc-input');
+    if (document.activeElement !== loc) loc.value = db.game.location || '';
+
+    var sb = document.getElementById('sb-input');
+    var bb = document.getElementById('bb-input');
+    if (document.activeElement !== sb) sb.value = db.game.blinds.sb === '' ? '' : db.game.blinds.sb;
+    if (document.activeElement !== bb) bb.value = db.game.blinds.bb === '' ? '' : db.game.blinds.bb;
+
+    updateClock();
+  }
+
+  function updateClock(){
+    var el = document.getElementById('clock-time');
+    var btn = document.getElementById('clock-btn');
+    if (!el) return;
+
+    if (!db.game.startedAt){
+      el.className = 'clock-time idle';
+      el.textContent = 'Not started';
+      btn.textContent = 'Start';
+      return;
+    }
+
+    var h = hoursSince(db.game.startedAt);
+    var started = new Date(db.game.startedAt);
+    el.className = 'clock-time';
+    el.textContent = fmtHours(h) + ' · since ' +
+      started.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+    btn.textContent = 'Restart';
+
+    // Every player's BB/hr moves with the clock.
+    db.game.players.forEach(function(p){ updateNetInline(p.rid); });
+  }
 
   function renderPlayers(){
     var list = document.getElementById('players-list');
@@ -1134,6 +1487,7 @@
         '<div class="player-footer">' +
           '<span><span class="net-label">Net</span>' +
           '<span class="net ' + netClass + '" data-net="' + p.rid + '">' + netText + '</span></span>' +
+          '<span class="bbhr" data-bbhr="' + p.rid + '">' + bbHrText(p) + '</span>' +
         '</div>';
 
       list.appendChild(row);
@@ -1207,13 +1561,28 @@
     return null;
   }
 
+  function bbHrText(p){
+    var v = bbPerHour(p);
+    if (v === null){
+      if (!bigBlind()) return 'set blinds for BB/hr';
+      if (!db.game.startedAt) return 'start the clock for BB/hr';
+      return fmtHours(playerHours(p)) + ' played';
+    }
+    var cls = v > 0 ? 'pos' : (v < 0 ? 'neg' : 'zero');
+    return '<b class="' + cls + '">' + fmtBB(v) + ' BB/hr</b> · ' + fmtHours(playerHours(p));
+  }
+
   function updateNetInline(rid){
     var p = findPlayer(rid);
+    if (!p) return;
     var el = document.querySelector('[data-net="' + rid + '"]');
-    if (!p || !el) return;
-    var net = netOf(p);
-    el.className = 'net ' + (net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero')));
-    el.textContent = net === null ? 'Awaiting cash-out' : fmt(net);
+    if (el){
+      var net = netOf(p);
+      el.className = 'net ' + (net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero')));
+      el.textContent = net === null ? 'Awaiting cash-out' : fmt(net);
+    }
+    var bb = document.querySelector('[data-bbhr="' + rid + '"]');
+    if (bb) bb.innerHTML = bbHrText(p);
   }
 
   function renderSummary(){
@@ -1432,9 +1801,12 @@
   }
 
   function commitPlayer(rid, buyin){
+    // The clock starts itself with the first player so it never gets forgotten.
+    if (!db.game.startedAt) db.game.startedAt = new Date().toISOString();
     db.game.players.push({
       rid: rid, buyins: [round2(buyin)], finalStack: null,
-      stackMode: 'total', stackCounts: {}, paid: false
+      stackMode: 'total', stackCounts: {}, paid: false,
+      joinedAt: new Date().toISOString()
     });
     clearAddForm();
     renderAll();
@@ -1491,15 +1863,26 @@
                 buyins: p.buyins.slice(),
                 finalStack: round2(p.finalStack),
                 net: netOf(p),
-                paid: !!p.paid
+                paid: !!p.paid,
+                hours: round2(playerHours(p))
               };
             });
             db.history.unshift({
               id: db.nextGameId++,
               endedAt: new Date().toISOString(),
+              startedAt: db.game.startedAt,
+              location: db.game.location || '',
+              bb: bigBlind() || null,
+              sb: parseFloat(db.game.blinds.sb) || null,
               entries: entries
             });
-            db.game = { players: [] };
+            // Location and blinds carry to the next game; the clock does not.
+            db.game = {
+              players: [],
+              location: db.game.location,
+              blinds: db.game.blinds,
+              startedAt: null
+            };
             closeModal();
             renderAll();
             showToast('Game saved to history');
@@ -1516,7 +1899,12 @@
       body: 'Clears the table without saving anything to history. This cannot be undone.',
       buttons: [
         { label: 'Discard', cls:'btn-danger', onClick: function(){
-            db.game = { players: [] };
+            db.game = {
+              players: [],
+              location: db.game.location,
+              blinds: db.game.blinds,
+              startedAt: null
+            };
             closeModal();
             renderAll();
             showToast('Table cleared');
@@ -1898,13 +2286,20 @@
       rows.sort(function(a,b){ return b.s.total - a.s.total; });
 
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
-              '<th>Player</th><th>Net</th><th>Games</th><th>Rebuys</th><th>RB/game</th>' +
+              '<th>Player</th><th>Net</th><th>ROI</th><th>BB/hr</th><th>Games</th><th>Rebuys</th><th>RB/game</th>' +
               '<th>Total buy-in</th><th>Buy-in/game</th><th>Avg</th><th>Best</th><th>Worst</th>' +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' +
-               '<td>' + escapeHtml(x.r.name) + '</td>' +
+               '<td><div class="stat-name">' +
+                 '<span>' + escapeHtml(x.r.name) + '</span>' +
+                 '<button class="btn-mini" data-statedit="' + x.r.id + '">Edit</button>' +
+                 '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button>' +
+               '</div></td>' +
                '<td class="' + cls(x.s.total) + '">' + fmt(x.s.total) + '</td>' +
+               '<td class="' + cls(x.s.roi) + '">' + fmtRoi(x.s.roi) + '</td>' +
+               '<td class="' + cls(x.s.bbPerHour) + '">' +
+                 (x.s.bbPerHour === null ? '—' : fmtBB(x.s.bbPerHour)) + '</td>' +
                '<td>' + x.s.sessions + '</td>' +
                '<td>' + x.s.rebuys + '</td>' +
                '<td>' + x.s.avgRebuys.toFixed(1) + '</td>' +
@@ -1915,8 +2310,17 @@
                '<td class="' + cls(x.s.worst) + '">' + fmt(x.s.worst || 0) + '</td>' +
              '</tr>';
       });
-      h += '</tbody></table></div><div class="hint" style="margin-top:10px;">Swipe the table sideways for Avg / Best / Worst.</div>';
+      h += '</tbody></table></div><div class="hint" style="margin-top:10px;">' +
+           'Swipe the table sideways for the rest. BB/hr counts only games played with ' +
+           'blinds and the session clock set.</div>';
       card.innerHTML = h;
+
+      card.querySelectorAll('[data-statedit]').forEach(function(btn){
+        btn.onclick = function(){ editRosterPlayer(Number(btn.getAttribute('data-statedit'))); };
+      });
+      card.querySelectorAll('[data-statchart]').forEach(function(btn){
+        btn.onclick = function(){ showPlayerGraph(Number(btn.getAttribute('data-statchart'))); };
+      });
     }
 
     // --- past games ---
@@ -1937,22 +2341,18 @@
         var lines = g.entries.slice().sort(function(a,b){ return b.net - a.net; }).map(function(e){
           var buyins = entryBuyins(e);
           var rebuys = Math.max(0, buyins.length - 1);
-          var subText = fmt(entryTotalIn(e)) + ' in' +
+          var tin = entryTotalIn(e);
+          var subText = fmt(tin) + ' in' +
             (rebuys ? ' (' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') + ')' : '') +
-            ' &middot; ' + fmt(e.finalStack) + ' out';
-          var paidToggle = Math.abs(e.net) >= 0.005
-            ? '<label class="paid-toggle"><input type="checkbox" data-histpaid="' + g.id + ':' + e.rid + '"' +
-              (e.paid ? ' checked' : '') + '> Paid</label>'
-            : '';
+            ' &middot; ' + fmt(e.finalStack) + ' out &middot; ' + fmtRoi(roiOf(e.net, tin));
           return '<div>' +
                    '<div class="game-line">' +
-                     '<span class="nm">' + escapeHtml(e.name) + '</span>' +
+                     '<span class="nm">' + escapeHtml(entryName(e)) + '</span>' +
                      '<span class="' + cls(e.net) + '">' + fmt(e.net) + '</span>' +
                    '</div>' +
                    '<div class="game-line-sub">' +
                      '<span>' + subText + '</span>' +
-                     paidToggle +
-                     (Math.abs(e.net) >= 0.005 && !e.paid
+                     (Math.abs(e.net) >= 0.005
                        ? '<button class="btn-venmo" data-venmohist="' + e.rid + ':' + e.net + '">' +
                          (e.net < 0 ? 'Request' : 'Pay') + '</button>'
                        : '') +
@@ -1967,7 +2367,10 @@
           '<div class="game-head">' +
             '<div>' +
               '<div class="game-date">' + when + '</div>' +
-              '<div class="game-meta">' + g.entries.length + ' players &middot; ' + fmt(pot) + ' in play</div>' +
+              '<div class="game-meta">' + g.entries.length + ' players &middot; ' + fmt(pot) + ' in play' +
+                (g.location ? ' &middot; ' + escapeHtml(g.location) : '') +
+                (g.bb ? ' &middot; ' + fmt(g.sb || 0) + '/' + fmt(g.bb) : '') +
+              '</div>' +
             '</div>' +
             '<button class="btn-danger" data-delgame="' + g.id + '">Delete</button>' +
           '</div>' +
@@ -1991,19 +2394,6 @@
               { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
             ]
           });
-        };
-      });
-
-      document.querySelectorAll('[data-histpaid]').forEach(function(cb){
-        cb.onchange = function(){
-          var parts = cb.getAttribute('data-histpaid').split(':');
-          var g = historyGameById(Number(parts[0]));
-          if (!g) return;
-          var rid = Number(parts[1]);
-          for (var i = 0; i < g.entries.length; i++){
-            if (g.entries[i].rid === rid){ g.entries[i].paid = cb.checked; break; }
-          }
-          save();
         };
       });
 
@@ -2044,11 +2434,16 @@
       rc.innerHTML = rh;
 
       document.querySelectorAll('[data-rename]').forEach(function(btn){
-        btn.onclick = function(){
-          var rid = Number(btn.getAttribute('data-rename'));
-          var r = rosterById(rid);
-          if (!r) return;
-          openModal({
+        btn.onclick = function(){ editRosterPlayer(Number(btn.getAttribute('data-rename'))); };
+      });
+    }
+  }
+
+  // Shared by the Roster list and the Edit button on each Player stats row.
+  function editRosterPlayer(rid){
+    var r = rosterById(rid);
+    if (!r) return;
+    openModal({
             title: 'Edit player',
             body: 'Their history and stats stay attached &mdash; only these details change.' +
                   '<span class="field-label" style="margin-top:12px;">Name</span>' +
@@ -2088,15 +2483,136 @@
               }},
               { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
             ]
-          });
-        };
-      });
-    }
+    });
   }
 
   function cls(n){
     if (n === null || n === undefined) return 'zero';
     return n > 0 ? 'pos' : (n < 0 ? 'neg' : 'zero');
+  }
+
+  /* ---------------- player graph ---------------- */
+
+  // Cumulative profit across sessions, drawn as inline SVG so there's no
+  // library to load and it scales with the modal.
+  function profitChartSvg(series){
+    var W = 320, H = 190;
+    var padL = 42, padR = 10, padT = 12, padB = 26;
+    var plotW = W - padL - padR;
+    var plotH = H - padT - padB;
+
+    var vals = series.map(function(s){ return s.cumulative; });
+    var hi = Math.max.apply(null, vals.concat([0]));
+    var lo = Math.min.apply(null, vals.concat([0]));
+    if (hi === lo){ hi += 10; lo -= 10; }
+    var pad = (hi - lo) * 0.12;
+    hi += pad; lo -= pad;
+
+    function x(i){
+      return series.length === 1
+        ? padL + plotW / 2
+        : padL + (i / (series.length - 1)) * plotW;
+    }
+    function y(v){
+      return padT + (1 - (v - lo) / (hi - lo)) * plotH;
+    }
+
+    var zeroY = y(0);
+    var pts = series.map(function(s, i){ return x(i) + ',' + y(s.cumulative); });
+
+    // Shade between the line and break-even so winning and losing stretches read
+    // at a glance.
+    var area = 'M' + x(0) + ',' + zeroY + ' L' + pts.join(' L') +
+               ' L' + x(series.length - 1) + ',' + zeroY + ' Z';
+
+    var last = series[series.length - 1].cumulative;
+    var lineColor = last > 0 ? '#3fae66' : (last < 0 ? '#c94040' : '#7c847d');
+
+    var dots = series.map(function(s, i){
+      return '<circle cx="' + x(i) + '" cy="' + y(s.cumulative) + '" r="' +
+             (series.length > 14 ? 2 : 3.2) + '" fill="' + lineColor + '"/>';
+    }).join('');
+
+    var xLabels = '';
+    [0, series.length - 1].forEach(function(i, k){
+      if (k === 1 && series.length === 1) return;
+      xLabels += '<text x="' + x(i) + '" y="' + (H - 8) + '" fill="#7c847d" font-size="10" ' +
+                 'text-anchor="' + (k === 0 ? 'start' : 'end') + '">' + series[i].index + '</text>';
+    });
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
+             'aria-label="Cumulative profit over ' + series.length + ' sessions">' +
+             '<line x1="' + padL + '" y1="' + zeroY + '" x2="' + (W - padR) + '" y2="' + zeroY +
+               '" stroke="#333a34" stroke-width="1" stroke-dasharray="3 3"/>' +
+             '<path d="' + area + '" fill="' + lineColor + '" opacity="0.13"/>' +
+             '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + lineColor +
+               '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' +
+             dots +
+             // Skip an end label when it would collide with the $0 baseline.
+             (Math.abs(y(hi) - zeroY) > 15
+               ? '<text x="' + (padL - 6) + '" y="' + (y(hi) + 9) + '" fill="#7c847d" font-size="10" ' +
+                 'text-anchor="end">' + fmt(hi) + '</text>' : '') +
+             '<text x="' + (padL - 6) + '" y="' + (zeroY + 3) + '" fill="#7c847d" font-size="10" ' +
+               'text-anchor="end">$0</text>' +
+             (Math.abs(y(lo) - zeroY) > 15
+               ? '<text x="' + (padL - 6) + '" y="' + (y(lo) - 2) + '" fill="#7c847d" font-size="10" ' +
+                 'text-anchor="end">' + fmt(lo) + '</text>' : '') +
+             xLabels +
+           '</svg>';
+  }
+
+  function showPlayerGraph(rid){
+    var r = rosterById(rid);
+    if (!r) return;
+    var series = sessionsFor(rid);
+    var s = statsFor(rid);
+
+    if (!series.length){
+      openModal({
+        title: r.name,
+        body: '<div class="chart-empty">No completed sessions yet, so there is nothing to plot. ' +
+              'Finish a game with <strong>End &amp; save</strong> and the line starts here.</div>',
+        buttons: [{ label: 'Close', cls:'btn-ghost', onClick: closeModal }]
+      });
+      return;
+    }
+
+    var recent = series.slice(-6).reverse().map(function(x){
+      var d = new Date(x.endedAt);
+      var when = isNaN(d.getTime()) ? 'Session ' + x.index
+        : d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
+      return '<div class="game-line" style="margin-top:6px;">' +
+               '<span class="nm">#' + x.index + ' &middot; ' + when +
+                 (x.location ? ' &middot; ' + escapeHtml(x.location) : '') + '</span>' +
+               '<span class="' + cls(x.net) + '">' + fmt(x.net) + ' &middot; ' + fmtRoi(x.roi) + '</span>' +
+             '</div>';
+    }).join('');
+
+    openModal({
+      title: r.name,
+      body:
+        '<div class="chart-wrap">' + profitChartSvg(series) + '</div>' +
+        '<div class="hint" style="text-align:center;">Cumulative profit &middot; x-axis is sessions played</div>' +
+        '<div class="chart-legend">' +
+          '<div class="cl"><div class="cl-label">Sessions</div>' +
+            '<div class="cl-val">' + s.sessions + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Net</div>' +
+            '<div class="cl-val ' + cls(s.total) + '">' + fmt(s.total) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">ROI</div>' +
+            '<div class="cl-val ' + cls(s.roi) + '">' + fmtRoi(s.roi) + '</div></div>' +
+        '</div>' +
+        '<div class="chart-legend" style="margin-top:8px;">' +
+          '<div class="cl"><div class="cl-label">Avg / game</div>' +
+            '<div class="cl-val ' + cls(s.avg) + '">' + fmt(s.avg) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Best</div>' +
+            '<div class="cl-val ' + cls(s.best) + '">' + fmt(s.best || 0) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">BB/hr</div>' +
+            '<div class="cl-val ' + cls(s.bbPerHour) + '">' +
+              (s.bbPerHour === null ? '—' : fmtBB(s.bbPerHour)) + '</div></div>' +
+        '</div>' +
+        '<div style="margin-top:16px;"><span class="field-label">Recent sessions</span>' + recent + '</div>',
+      buttons: [{ label: 'Close', cls:'btn-ghost', onClick: closeModal }]
+    });
   }
 
   /* ---------------- edit a saved game ---------------- */
@@ -2145,7 +2661,7 @@
     }
 
     openModal({
-      title: 'Edit ' + escapeHtml(e.name),
+      title: 'Edit ' + escapeHtml(entryName(e)),
       body:
         '<div id="edit-buyin-rows">' + rowsHtml() + '</div>' +
         '<button type="button" class="btn-ghost" id="edit-addbuyin" style="margin-top:9px;width:100%;">+ Add rebuy</button>' +
@@ -2319,8 +2835,9 @@
     document.querySelectorAll('.tab').forEach(function(t){
       t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
     });
+    // classList, not className — the panels also carry `compact`.
     ['table','chips','seats','history','pay'].forEach(function(n){
-      document.getElementById('panel-' + n).className = 'panel' + (n === name ? ' active' : '');
+      document.getElementById('panel-' + n).classList.toggle('active', n === name);
     });
     window.scrollTo(0, 0);
   }
@@ -2328,6 +2845,7 @@
   /* ---------------- top-level render ---------------- */
 
   function renderAll(){
+    renderGameMeta();
     renderPlayers();
     renderSummary();
     renderChips();
@@ -2355,6 +2873,61 @@
 
   document.getElementById('end-btn').onclick = endGame;
   document.getElementById('reset-btn').onclick = discardGame;
+
+  document.getElementById('loc-input').addEventListener('input', function(){
+    db.game.location = this.value;
+    save();
+  });
+
+  document.getElementById('sb-input').addEventListener('input', function(){
+    db.game.blinds.sb = this.value === '' ? '' : parseFloat(this.value);
+    save();
+  });
+
+  document.getElementById('bb-input').addEventListener('input', function(){
+    db.game.blinds.bb = this.value === '' ? '' : parseFloat(this.value);
+    db.game.players.forEach(function(p){ updateNetInline(p.rid); });
+    save();
+  });
+
+  document.getElementById('clock-btn').onclick = function(){
+    if (!db.game.startedAt){
+      db.game.startedAt = new Date().toISOString();
+      save();
+      updateClock();
+      return showToast('Session clock started');
+    }
+    openModal({
+      title: 'Restart the clock?',
+      body: 'Sets the session start to right now. Everyone\'s BB/hr is recalculated ' +
+            'from this moment, so only do it if the clock was started at the wrong time.',
+      buttons: [
+        { label: 'Restart from now', cls:'btn-danger', onClick: function(){
+            var now = new Date().toISOString();
+            db.game.startedAt = now;
+            db.game.players.forEach(function(p){ p.joinedAt = now; });
+            closeModal();
+            save();
+            updateClock();
+            showToast('Clock restarted');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  };
+
+  attachCombo('name-input', 'name-list', playerSuggestions, function(){
+    document.getElementById('buyin-input').focus();
+  });
+  attachCombo('loc-input', 'loc-list', locationSuggestions, function(it){
+    db.game.location = it.value;
+    save();
+  });
+
+  // Keeps the session clock and every BB/hr honest without a full re-render.
+  setInterval(function(){
+    if (db.game.startedAt && db.game.players.length) updateClock();
+  }, 30000);
 
   document.getElementById('plan-target').oninput = function(){
     db.plan.target = this.value === '' ? '' : parseFloat(this.value);
