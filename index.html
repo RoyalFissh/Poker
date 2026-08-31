@@ -349,10 +349,10 @@
   .game-line{display:flex;justify-content:space-between;font-size:13px;gap:10px;}
   .game-line .nm{color:var(--text-mid);}
   .game-line-sub{
-    display:flex;align-items:center;flex-wrap:wrap;gap:8px 10px;
     font-size:11px;color:var(--text-lo);margin-top:3px;
   }
-  .game-line-sub button{padding:4px 9px;font-size:11px;margin-left:auto;}
+  .game-line-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
+  .game-line-actions button{padding:4px 9px;font-size:11px;}
 
   .edit-buyin-row{display:flex;gap:8px;align-items:center;margin-top:7px;}
   .edit-buyin-row .ebr-label{flex:0 0 66px;font-size:12px;color:var(--text-lo);}
@@ -549,6 +549,7 @@
   <button class="tab active" data-tab="table">Table</button>
   <button class="tab" data-tab="chips">Chips</button>
   <button class="tab" data-tab="seats">Seats</button>
+  <button class="tab" data-tab="stats">Stats</button>
   <button class="tab" data-tab="history">History</button>
   <button class="tab" data-tab="pay">Pay</button>
 </div>
@@ -734,8 +735,8 @@
     </div>
   </div>
 
-  <!-- ============ HISTORY ============ -->
-  <div class="panel" id="panel-history">
+  <!-- ============ STATS ============ -->
+  <div class="panel" id="panel-stats">
     <div class="section">
       <div class="section-title">Player stats</div>
       <div class="card" id="stats-card"></div>
@@ -748,7 +749,10 @@
         <div id="graph-body"></div>
       </div>
     </div>
+  </div>
 
+  <!-- ============ HISTORY ============ -->
+  <div class="panel" id="panel-history">
     <div class="section">
       <div class="section-title">
         <span>Past games</span>
@@ -921,7 +925,8 @@
   }
 
   function fmtBB(v){
-    return (v > 0 ? '+' : '') + (Math.round(v * 10) / 10).toFixed(1);
+    var sign = v > 0 ? '+' : (v < 0 ? '-' : '');
+    return sign + '$' + (Math.round(Math.abs(v) * 10) / 10).toFixed(1);
   }
 
   // Net as a percentage of everything put on the table.
@@ -930,11 +935,11 @@
     return (net / totalIn) * 100;
   }
 
-  // Sign and % sit outside the brackets, the number inside: +(245.5)%
+  // Sign and % both sit inside the brackets: (+245.5%)
   function fmtRoi(v){
     if (v === null || v === undefined) return '—';
     var sign = v > 0 ? '+' : (v < 0 ? '-' : '');
-    return sign + '(' + (Math.round(Math.abs(v) * 10) / 10).toFixed(1) + ')%';
+    return '(' + sign + (Math.round(Math.abs(v) * 10) / 10).toFixed(1) + '%)';
   }
 
   function clampSize(n){
@@ -2390,17 +2395,18 @@
           var buyins = entryBuyins(e);
           var rebuys = Math.max(0, buyins.length - 1);
           var tin = entryTotalIn(e);
-          // ROI stays grey — the green/red is doing its job on the profit itself.
+          var roi = roiOf(e.net, tin);
           var subText = fmt(tin) + ' in' +
-            (rebuys ? ' (' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') + ')' : '') +
-            ' &middot; ' + fmt(e.finalStack) + ' out / ' + fmtRoi(roiOf(e.net, tin));
+            (rebuys ? ' &middot; ' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') : '') +
+            ' &middot; ' + fmt(e.finalStack) + ' out' +
+            ' &middot; <span class="' + cls(roi) + '">' + fmtRoi(roi) + '</span>';
           return '<div>' +
                    '<div class="game-line">' +
                      '<span class="nm">' + escapeHtml(entryName(e)) + '</span>' +
                      '<span class="' + cls(e.net) + '">' + fmt(e.net) + '</span>' +
                    '</div>' +
-                   '<div class="game-line-sub">' +
-                     '<span>' + subText + '</span>' +
+                   '<div class="game-line-sub">' + subText + '</div>' +
+                   '<div class="game-line-actions">' +
                      (Math.abs(e.net) >= 0.005
                        ? '<button class="btn-venmo" data-venmohist="' + e.rid + ':' + e.net + '">' +
                          (e.net < 0 ? 'Request' : 'Pay') + '</button>'
@@ -2687,7 +2693,7 @@
                '<span class="nm">#' + x.index + ' &middot; ' + when + ' &middot; ' + stakes +
                  (x.location ? ' &middot; ' + escapeHtml(x.location) : '') + '</span>' +
                '<span class="' + cls(x.net) + '">' + fmt(x.net) +
-                 ' <span class="zero">/ ' + fmtRoi(x.roi) + '</span></span>' +
+                 ' <span class="' + cls(x.roi) + '">' + fmtRoi(x.roi) + '</span></span>' +
              '</div>';
     }).join('');
 
@@ -3036,7 +3042,7 @@
       t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
     });
     // classList, not className — the panels also carry `compact`.
-    ['table','chips','seats','history','pay'].forEach(function(n){
+    ['table','chips','seats','stats','history','pay'].forEach(function(n){
       document.getElementById('panel-' + n).classList.toggle('active', n === name);
     });
     window.scrollTo(0, 0);

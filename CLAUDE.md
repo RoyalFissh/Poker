@@ -49,16 +49,25 @@ render functions per tab → graph → editors → `renderAll` → wiring.
   dollar amount; counting chips by colour is the opt-in path. In a
   dollars/chips toggle, `$` goes first and starts active.
 - **Compact sizing.** Table / Chips / Seats / Pay carry `class="panel compact"`
-  and are scaled to match the History tab's Player stats table (~13px body,
-  ~10px labels). History is the reference — leave it alone. New markup in those
+  and are scaled to match the Stats tab's Player stats table (~13px body,
+  ~10px labels). Stats is the reference — leave it alone. New markup in those
   panels needs a matching `.panel.compact` rule.
 - `switchTab` toggles the `active` class with `classList` — never assign
   `className` on a panel, it drops `compact`.
 - Inputs are under 16px, which is only safe because the viewport meta sets
   `maximum-scale=1` to stop iOS Safari zooming on focus. Keep that meta tag.
-- **ROI reads `+(245.5)%`** — sign and percent outside the brackets — separated
-  from money by ` / `. It stays grey next to a green/red profit figure so the
-  two don't compete; it is colour-coded only in its own stats column.
+- **ROI reads `(+245.5%)`** — sign and percent both inside the brackets. It is
+  colour-coded green/red (via `cls()`) everywhere it appears now, including
+  next to a profit figure — Kevin decided he wanted it to match the money
+  figures instead of staying neutral grey.
+- **BB/hr reads `+$2.3 BB/hr`** — `fmtBB()` puts a `$` right after the sign,
+  even though it's a big-blind count, not a dollar figure. Kevin asked for the
+  `$` explicitly, for visual consistency with the other stats columns.
+- **Player stats + Profit graph live in their own Stats tab**, not History.
+  Tab order is Table, Chips, Seats, Stats, History, Pay. History is just Past
+  games / Roster / Backup &amp; restore now. The Graph button on a stats row
+  (`showPlayerGraph`) just scrolls to the Profit graph card within the same
+  Stats tab — it doesn't switch tabs, since both live together now.
 - Prefer small inline SVG over any charting library.
 
 ## Two gotchas that have cost real time
