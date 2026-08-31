@@ -1,0 +1,74 @@
+# Poker Ledger
+
+A single-page app Kevin uses at his home game to track buy-ins, rebuys, cash-outs,
+who owes who, chip denominations, seat draws, and per-player stats.
+
+**Everything lives in `index.html`.** One file: HTML, CSS, and vanilla JS in an
+IIFE. No build step, no framework, no package manager, no dependencies. Do not
+add any — the whole point is that the file can be edited and pushed from a phone.
+
+## Deploy
+
+The repo *is* the site: GitHub Pages serves `main` at
+<https://royalfissh.github.io/Poker/>. So:
+
+1. Edit `index.html`.
+2. Commit and push to `main`.
+3. Wait ~40s and confirm the live bytes actually changed:
+
+```bash
+curl -s https://royalfissh.github.io/Poker/ | grep -c "some-string-you-just-added"
+```
+
+Verify by fetching the URL, not by the Pages API — `builds/latest` lags and
+reports stale commits.
+
+## How the code is organised
+
+Inside the IIFE, in order: money/time helpers → persistence (`load`, `save`,
+`normalizeDb`) → roster → type-ahead → Venmo → modal → chip grid → game math →
+render functions per tab → graph → editors → `renderAll` → wiring.
+
+- **State** is one object, `db`, persisted to `localStorage` under
+  `poker-ledger:v2`. Every write goes through `save()`.
+- **`normalizeDb()` is the safety net.** Any new field on `db` gets a default
+  and a type guard there, so an old save or a hand-edited import can't crash the
+  app. Add to it whenever you add state.
+- **`renderAll()`** re-renders every tab. Inline updates (`updateNetInline`,
+  `updatePlanTotals`, `updateClock`) exist so typing in a field doesn't blow away
+  focus — use them for keystroke-level updates.
+- **Money is computed in integer cents** (`chipsToDollars`) so 5¢ chips don't
+  drift. `round2()` everything that reaches storage.
+- **Always `escapeHtml()`** anything player-typed that goes into `innerHTML`.
+- **Errors surface as a toast** via `window.onerror` — a blank screen means a
+  syntax error, so check that first.
+
+## House style Kevin has asked for
+
+- **Dollars lead, chips are secondary.** Every money input defaults to a plain
+  dollar amount; counting chips by colour is the opt-in path. In a
+  dollars/chips toggle, `$` goes first and starts active.
+- **Compact sizing.** Table / Chips / Seats / Pay carry `class="panel compact"`
+  and are scaled to match the History tab's Player stats table (~13px body,
+  ~10px labels). History is the reference — leave it alone. New markup in those
+  panels needs a matching `.panel.compact` rule.
+- `switchTab` toggles the `active` class with `classList` — never assign
+  `className` on a panel, it drops `compact`.
+- Inputs are under 16px, which is only safe because the viewport meta sets
+  `maximum-scale=1` to stop iOS Safari zooming on focus. Keep that meta tag.
+- **ROI reads `+(245.5)%`** — sign and percent outside the brackets — separated
+  from money by ` / `. It stays grey next to a green/red profit figure so the
+  two don't compete; it is colour-coded only in its own stats column.
+- Prefer small inline SVG over any charting library.
+
+## Testing
+
+Kevin has no node or python installed. To check a change, open `index.html` in a
+browser and drive it, or serve it with a PowerShell `HttpListener` script. Note
+`localStorage` is disabled on `data:` URLs, so a file preview won't persist
+state between reloads — rebuild test data with a script in the console.
+
+## On the back burner
+
+"Editing a game while it's running" — Kevin asked for it, then said he wasn't
+sure what he meant. Ask him what it should do before building anything.
