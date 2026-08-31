@@ -46,7 +46,7 @@
   .wrap{max-width:720px;margin:0 auto;padding:0 14px;}
 
   header{
-    padding:calc(env(safe-area-inset-top, 0px) + 26px) 16px 16px;
+    padding:calc(env(safe-area-inset-top, 0px) + 8px) 16px 16px;
     text-align:center;
     background:linear-gradient(180deg, var(--felt-900) 0%, rgba(13,46,30,0) 100%);
   }
@@ -242,7 +242,7 @@
      on this tab read as one thing. */
   .denom-row{
     display:grid;
-    grid-template-columns:18px minmax(0,1fr) 108px;
+    grid-template-columns:18px minmax(0,1fr) 96px auto;
     gap:10px;align-items:center;
     padding:10px 0;
     border-bottom:1px solid rgba(51,58,52,0.5);
@@ -250,6 +250,13 @@
   .denom-row:last-child{border-bottom:none;}
   .denom-name{font-size:14px;font-weight:600;line-height:1.2;}
   .denom-row input{text-align:right;font-size:15px;padding:8px 10px;}
+  button.chip-dot{padding:0;}
+  .swatch-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:4px;}
+  .swatch{
+    width:100%;aspect-ratio:1;border-radius:50%;padding:0;
+    border:2px solid rgba(255,255,255,0.28);box-shadow:0 0 0 1px rgba(0,0,0,0.4);
+  }
+  .swatch.active{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold);}
 
   /* ---------- buy-in stack builder ---------- */
   .plan-head{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
@@ -330,7 +337,7 @@
     text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
     color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
   }
-  table.stats th:first-child,table.stats td:first-child{text-align:left;}
+  table.stats th:first-child,table.stats td:first-child{text-align:left;width:1%;white-space:nowrap;}
   table.stats td{padding:9px 0;text-align:right;border-bottom:1px solid rgba(51,58,52,0.5);}
   table.stats td:first-child{font-weight:600;}
   table.stats tr:last-child td{border-bottom:none;}
@@ -423,6 +430,7 @@
   .clock-time{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;}
   .clock-time.idle{color:var(--text-lo);font-size:14px;font-weight:600;}
   .clock-row button{flex:0 0 auto;}
+  .clock-btns{display:flex;gap:8px;flex:0 0 auto;}
   .bbhr{font-size:12px;color:var(--text-lo);font-weight:600;}
   .bbhr b{font-weight:700;}
 
@@ -568,13 +576,15 @@
           <div class="combo-list" id="loc-list"></div>
         </div>
         <div class="blind-grid">
-          <div>
+          <div class="combo">
             <span class="field-label">Small blind</span>
-            <input id="sb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.25">
+            <input id="sb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.25" autocomplete="off">
+            <div class="combo-list" id="sb-list"></div>
           </div>
-          <div>
+          <div class="combo">
             <span class="field-label">Big blind</span>
-            <input id="bb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.50">
+            <input id="bb-input" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.50" autocomplete="off">
+            <div class="combo-list" id="bb-list"></div>
           </div>
         </div>
         <div class="clock-row">
@@ -582,7 +592,10 @@
             <span class="field-label">Session clock</span>
             <div class="clock-time idle" id="clock-time">Not started</div>
           </div>
-          <button class="btn-ghost" id="clock-btn">Start</button>
+          <div class="clock-btns">
+            <button class="btn-ghost" id="clock-stop" style="display:none;">Stop</button>
+            <button class="btn-ghost" id="clock-btn">Start</button>
+          </div>
         </div>
       </div>
     </div>
@@ -657,6 +670,7 @@
           convert final-stack chip counts into dollars on the Table tab.
         </div>
         <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-ghost" id="denom-add">Add chip color</button>
           <button class="btn-ghost" id="denom-reset">Restore defaults</button>
         </div>
       </div>
@@ -846,11 +860,30 @@
     { key:'blue',  label:'Blue',  css:'#3b6ea5', value:1.00 }
   ];
 
+  // Picker options for "choose the color" on a chip row — other people's chip
+  // sets don't match Kevin's White/Red/Green/Black/Blue defaults.
+  var COLOR_PALETTE = [
+    { label:'White',  css:'#efece0' },
+    { label:'Red',    css:'#c14040' },
+    { label:'Green',  css:'#2c8a4f' },
+    { label:'Black',  css:'#2e322e' },
+    { label:'Blue',   css:'#3b6ea5' },
+    { label:'Yellow', css:'#d6b334' },
+    { label:'Purple', css:'#7a4fa3' },
+    { label:'Orange', css:'#cf7a2e' },
+    { label:'Pink',   css:'#c9598c' },
+    { label:'Gray',   css:'#8a8f8a' },
+    { label:'Teal',   css:'#2f8f8a' },
+    { label:'Maroon', css:'#7a2f3a' },
+    { label:'Cream',  css:'#e8dcb8' },
+    { label:'Navy',   css:'#2a3d63' }
+  ];
+
   var db = {
     roster: [],          // { id, name }
     colors: null,        // [{ key,label,css,value }]
     // { rid, buyins:[num] (always dollars), finalStack:num|null, stackMode:'chips'|'total', stackCounts, paid, joinedAt }
-    game: { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null },
+    game: { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null, stoppedAt:null },
     history: [],         // { id, endedAt, entries:[{rid,name,buyins:[num],finalStack,net,paid}] }
     plan: { target:50, stacks:8, counts:{} },  // buy-in stack builder
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
@@ -893,17 +926,20 @@
     return (!isNaN(v) && v > 0) ? v : 0;
   }
 
-  function hoursSince(iso){
+  // `end` lets a stopped clock freeze elapsed time instead of ticking to now.
+  function hoursSince(iso, end){
     if (!iso) return 0;
     var t = new Date(iso).getTime();
     if (isNaN(t)) return 0;
-    var h = (Date.now() - t) / 3600000;
+    var endT = end ? new Date(end).getTime() : Date.now();
+    if (isNaN(endT)) endT = Date.now();
+    var h = (endT - t) / 3600000;
     return h > 0 ? h : 0;
   }
 
   // A player who sat down late is only charged for their own time at the table.
   function playerHours(p){
-    return hoursSince(p.joinedAt || db.game.startedAt);
+    return hoursSince(p.joinedAt || db.game.startedAt, db.game.stoppedAt);
   }
 
   function fmtHours(h){
@@ -1029,6 +1065,7 @@
     if (typeof db.game.location !== 'string') db.game.location = '';
     if (!db.game.blinds || typeof db.game.blinds !== 'object') db.game.blinds = { sb:0.25, bb:0.50 };
     if (typeof db.game.startedAt !== 'string') db.game.startedAt = null;
+    if (typeof db.game.stoppedAt !== 'string') db.game.stoppedAt = null;
     if (db.nextRosterId <= db.roster.length){
       db.nextRosterId = db.roster.reduce(function(m,p){ return Math.max(m, p.id); }, 0) + 1;
     }
@@ -1255,6 +1292,25 @@
       });
   }
 
+  // Common stakes plus anything actually used before, so typing "0.2" or "5"
+  // offers a pickable dropdown instead of a blank text field.
+  var COMMON_BLINDS = [0.05, 0.10, 0.25, 0.50, 1, 2, 3, 5, 10, 20, 25, 50, 100];
+  function blindSuggestions(q){
+    var seen = {}, values = [];
+    function add(v){
+      var n = parseFloat(v);
+      if (isNaN(n) || n <= 0 || seen[n]) return;
+      seen[n] = true;
+      values.push(n);
+    }
+    COMMON_BLINDS.forEach(add);
+    db.history.forEach(function(g){ add(g.sb); add(g.bb); });
+    return values
+      .sort(function(a,b){ return a - b; })
+      .filter(function(n){ return !q || String(n).indexOf(q) === 0; })
+      .map(function(n){ return { value:String(n), label: fmt(n) }; });
+  }
+
   /* ---------------- venmo ---------------- */
 
   function cleanVenmo(s){
@@ -1461,21 +1517,32 @@
   function updateClock(){
     var el = document.getElementById('clock-time');
     var btn = document.getElementById('clock-btn');
+    var stopBtn = document.getElementById('clock-stop');
     if (!el) return;
 
     if (!db.game.startedAt){
       el.className = 'clock-time idle';
       el.textContent = 'Not started';
       btn.textContent = 'Start';
+      stopBtn.style.display = 'none';
       return;
     }
 
-    var h = hoursSince(db.game.startedAt);
+    var h = hoursSince(db.game.startedAt, db.game.stoppedAt);
     var started = new Date(db.game.startedAt);
-    el.className = 'clock-time';
-    el.textContent = fmtHours(h) + ' · since ' +
-      started.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
-    btn.textContent = 'Restart';
+
+    if (db.game.stoppedAt){
+      el.className = 'clock-time idle';
+      el.textContent = fmtHours(h) + ' · stopped';
+      btn.textContent = 'Resume';
+      stopBtn.style.display = 'none';
+    } else {
+      el.className = 'clock-time';
+      el.textContent = fmtHours(h) + ' · since ' +
+        started.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+      btn.textContent = 'Restart';
+      stopBtn.style.display = '';
+    }
 
     // Every player's BB/hr moves with the clock.
     db.game.players.forEach(function(p){ updateNetInline(p.rid); });
@@ -1934,7 +2001,8 @@
               players: [],
               location: db.game.location,
               blinds: db.game.blinds,
-              startedAt: null
+              startedAt: null,
+              stoppedAt: null
             };
             closeModal();
             renderAll();
@@ -1956,7 +2024,8 @@
               players: [],
               location: db.game.location,
               blinds: db.game.blinds,
-              startedAt: null
+              startedAt: null,
+              stoppedAt: null
             };
             closeModal();
             renderAll();
@@ -1976,9 +2045,13 @@
       var row = document.createElement('div');
       row.className = 'denom-row';
       row.innerHTML =
-        '<div class="chip-dot" style="margin:0;background:' + c.css + ';"></div>' +
+        '<button type="button" class="chip-dot" style="margin:0;background:' + c.css + ';" ' +
+          'data-pickcolor="' + c.key + '" aria-label="Change color"></button>' +
         '<div class="denom-name">' + escapeHtml(c.label) + '</div>' +
-        '<input type="number" inputmode="decimal" min="0" step="0.01" data-denom="' + c.key + '" value="' + c.value + '">';
+        '<input type="number" inputmode="decimal" min="0" step="0.01" data-denom="' + c.key + '" value="' + c.value + '">' +
+        (db.colors.length > 1
+          ? '<button type="button" class="btn-mini" data-denomdel="' + c.key + '" aria-label="Remove chip color">&times;</button>'
+          : '<span></span>');
       list.appendChild(row);
     });
 
@@ -1991,6 +2064,60 @@
         save();
       };
     });
+
+    document.querySelectorAll('[data-pickcolor]').forEach(function(btn){
+      btn.onclick = function(){ openColorPicker(btn.getAttribute('data-pickcolor')); };
+    });
+
+    document.querySelectorAll('[data-denomdel]').forEach(function(btn){
+      btn.onclick = function(){
+        if (db.colors.length <= 1) return;
+        var key = btn.getAttribute('data-denomdel');
+        db.colors = db.colors.filter(function(c){ return c.key !== key; });
+        renderAll();
+        showToast('Chip color removed');
+      };
+    });
+  }
+
+  // Lets Kevin match a chip slot to whatever color someone's actual chip set
+  // uses, instead of being locked to the five defaults.
+  function openColorPicker(key){
+    var c = null;
+    for (var i = 0; i < db.colors.length; i++){
+      if (db.colors[i].key === key) c = db.colors[i];
+    }
+    if (!c) return;
+
+    var body = '<div class="swatch-grid">' + COLOR_PALETTE.map(function(p){
+      return '<button type="button" class="swatch' + (p.css === c.css ? ' active' : '') + '" ' +
+             'style="background:' + p.css + ';" data-swatch="' + p.css + '" ' +
+             'data-swatchlabel="' + escapeHtml(p.label) + '" title="' + escapeHtml(p.label) + '"></button>';
+    }).join('') + '</div>';
+
+    openModal({
+      title: 'Chip color',
+      body: body,
+      buttons: [ { label:'Cancel', cls:'btn-ghost', onClick: closeModal } ]
+    });
+
+    document.querySelectorAll('[data-swatch]').forEach(function(btn){
+      btn.onclick = function(){
+        c.css = btn.getAttribute('data-swatch');
+        c.label = btn.getAttribute('data-swatchlabel');
+        closeModal();
+        renderAll();
+      };
+    });
+  }
+
+  function addChipColor(){
+    var used = {};
+    db.colors.forEach(function(c){ used[c.css] = true; });
+    var next = COLOR_PALETTE.filter(function(p){ return !used[p.css]; })[0] || COLOR_PALETTE[COLOR_PALETTE.length - 1];
+    db.colors.push({ key:'c' + Date.now(), label:next.label, css:next.css, value:0 });
+    renderAll();
+    showToast(next.label + ' chip added');
   }
 
   /* ---------------- buy-in stack builder ---------------- */
@@ -3100,9 +3227,23 @@
   document.getElementById('clock-btn').onclick = function(){
     if (!db.game.startedAt){
       db.game.startedAt = new Date().toISOString();
+      db.game.stoppedAt = null;
       save();
       updateClock();
       return showToast('Session clock started');
+    }
+    if (db.game.stoppedAt){
+      // Shift startedAt (and every player's own joinedAt) forward by however
+      // long the clock sat stopped, so the paused stretch doesn't count toward BB/hr.
+      var pausedMs = Date.now() - new Date(db.game.stoppedAt).getTime();
+      db.game.startedAt = new Date(new Date(db.game.startedAt).getTime() + pausedMs).toISOString();
+      db.game.players.forEach(function(p){
+        if (p.joinedAt) p.joinedAt = new Date(new Date(p.joinedAt).getTime() + pausedMs).toISOString();
+      });
+      db.game.stoppedAt = null;
+      save();
+      updateClock();
+      return showToast('Session clock resumed');
     }
     openModal({
       title: 'Restart the clock?',
@@ -3112,6 +3253,7 @@
         { label: 'Restart from now', cls:'btn-danger', onClick: function(){
             var now = new Date().toISOString();
             db.game.startedAt = now;
+            db.game.stoppedAt = null;
             db.game.players.forEach(function(p){ p.joinedAt = now; });
             closeModal();
             save();
@@ -3123,11 +3265,28 @@
     });
   };
 
+  document.getElementById('clock-stop').onclick = function(){
+    if (!db.game.startedAt || db.game.stoppedAt) return;
+    db.game.stoppedAt = new Date().toISOString();
+    save();
+    updateClock();
+    showToast('Session clock stopped');
+  };
+
   attachCombo('name-input', 'name-list', playerSuggestions, function(){
     document.getElementById('buyin-input').focus();
   });
   attachCombo('loc-input', 'loc-list', locationSuggestions, function(it){
     db.game.location = it.value;
+    save();
+  });
+  attachCombo('sb-input', 'sb-list', blindSuggestions, function(it){
+    db.game.blinds.sb = parseFloat(it.value);
+    save();
+  });
+  attachCombo('bb-input', 'bb-list', blindSuggestions, function(it){
+    db.game.blinds.bb = parseFloat(it.value);
+    db.game.players.forEach(function(p){ updateNetInline(p.rid); });
     save();
   });
 
@@ -3192,6 +3351,8 @@
     renderAll();
     showToast('Chip values restored');
   };
+
+  document.getElementById('denom-add').onclick = addChipColor;
 
   var venmoInput = document.getElementById('venmo-input');
   venmoInput.addEventListener('input', function(){
