@@ -372,6 +372,29 @@
   .game-line-sub{
     font-size:11px;color:var(--text-lo);margin-top:3px;
   }
+  .amt-in{color:var(--gold);}
+  .amt-rebuy{color:#d0883c;}
+
+  /* ---------- game-detail form (Edit game / Add past game) ---------- */
+  .gf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal input[type=date],
+  .modal input[type=time]{
+    background:var(--ink-2);border:1px solid var(--line);border-radius:7px;
+    padding:9px 10px;color:var(--text-hi);font-size:15px;font-family:inherit;
+    width:100%;outline:none;
+  }
+  .modal input[type=date]:focus,
+  .modal input[type=time]:focus{border-color:var(--felt-500);}
+  .pg-row{
+    display:grid;grid-template-columns:minmax(0,1fr) 68px 68px 26px;
+    gap:6px;align-items:center;margin-bottom:7px;
+  }
+  .pg-row input{font-size:14px;padding:7px 8px;}
+  .pg-row .btn-danger{padding:5px 0;text-align:center;}
+  .pg-tally{
+    margin-top:10px;font-size:12px;color:var(--text-lo);
+    text-align:right;font-weight:600;
+  }
   .game-line-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px;}
   .game-line-actions button{padding:4px 9px;font-size:11px;}
 
@@ -806,6 +829,9 @@
         <span>Past games</span>
         <span id="history-count" style="font-size:11px;"></span>
       </div>
+      <button class="btn-ghost" id="add-past-btn" style="width:100%;margin-bottom:10px;">
+        + Add past game
+      </button>
       <div id="history-list"></div>
     </div>
 
@@ -994,9 +1020,10 @@
     return (net / bb) / h;
   }
 
+  // A count of big blinds, not money — no dollar sign.
   function fmtBB(v){
     var sign = v > 0 ? '+' : (v < 0 ? '-' : '');
-    return sign + '$' + (Math.round(Math.abs(v) * 10) / 10).toFixed(1);
+    return sign + (Math.round(Math.abs(v) * 10) / 10).toFixed(1);
   }
 
   // Net as a percentage of everything put on the table.
@@ -1012,9 +1039,9 @@
     return '(' + sign + (Math.round(Math.abs(v) * 10) / 10).toFixed(1) + '%)';
   }
 
-  // "First L." — used in the Profit graph's tight spots (player selector,
-  // the Everyone chart's toggle chips and in-chart labels) so names don't
-  // crowd things out. The Stats table and Roster always show the full name.
+  // "First L." — used wherever space is tight: the Profit graph's selector,
+  // the Everyone chart's chips and in-chart labels, and the Stats table. The
+  // Roster and each saved game keep the full name.
   function shortName(name){
     var parts = String(name || '').trim().split(/\s+/);
     if (parts.length < 2) return name;
@@ -1188,7 +1215,7 @@
         var tin = entryTotalIn(e);
         out.push({
           gameId: g.id,
-          endedAt: g.endedAt,
+          endedAt: gameDate(g),
           location: g.location || '',
           net: e.net,
           totalIn: tin,
@@ -1434,6 +1461,8 @@
       actions.appendChild(btn);
     });
     modalBack.classList.add('show');
+    // Runs once the body is in the DOM, for wiring up controls inside it.
+    if (opts.onOpen) opts.onOpen();
     if (opts.focus){
       var el = document.getElementById(opts.focus);
       if (el) setTimeout(function(){ el.focus(); }, 50);
@@ -2577,7 +2606,7 @@
   function statsCellContent(x, key){
     switch (key){
       case 'name':
-        return '<div class="stat-name"><span>' + escapeHtml(x.r.name) + '</span>' +
+        return '<div class="stat-name"><span>' + escapeHtml(shortName(x.r.name)) + '</span>' +
                '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button></div>';
       case 'total': return fmt(x.s.total);
       case 'roi': return fmtRoi(x.s.roi);
@@ -2652,7 +2681,7 @@
     } else {
       db.history.forEach(function(g){
         var pot = round2(g.entries.reduce(function(s,e){ return s + entryTotalIn(e); }, 0));
-        var d = new Date(g.endedAt);
+        var d = new Date(gameDate(g));
         var when = isNaN(d.getTime()) ? 'Unknown date'
           : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
 
@@ -2661,9 +2690,11 @@
           var rebuys = Math.max(0, buyins.length - 1);
           var tin = entryTotalIn(e);
           var roi = roiOf(e.net, tin);
-          var subText = fmt(tin) + ' in' +
-            (rebuys ? ' &middot; ' + rebuys + ' rebuy' + (rebuys > 1 ? 's' : '') : '') +
-            ' &middot; ' + fmt(e.finalStack) + ' out' +
+          // Money in is gold, rebuys amber, money out green or red like the net.
+          var subText = '<span class="amt-in">' + fmt(tin) + ' in</span>' +
+            (rebuys ? ' &middot; <span class="amt-rebuy">' + rebuys + ' rebuy' +
+              (rebuys > 1 ? 's' : '') + '</span>' : '') +
+            ' &middot; <span class="' + cls(e.net) + '">' + fmt(e.finalStack) + ' out</span>' +
             ' &middot; <span class="' + cls(roi) + '">' + fmtRoi(roi) + '</span>';
           return '<div>' +
                    '<div class="game-line">' +
@@ -3168,6 +3199,296 @@
     if (el) el.scrollIntoView({ block:'start', behavior:'smooth' });
   }
 
+  /* ---------------- shared game-detail fields ---------------- */
+
+  // <input type="date"> wants local YYYY-MM-DD, not an ISO string in UTC.
+  function dateInputValue(iso){
+    var d = iso ? new Date(iso) : new Date();
+    if (isNaN(d.getTime())) d = new Date();
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + '-' + (m < 10 ? '0' + m : m) + '-' + (day < 10 ? '0' + day : day);
+  }
+
+  function timeInputValue(iso){
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    var h = d.getHours(), mi = d.getMinutes();
+    return (h < 10 ? '0' + h : h) + ':' + (mi < 10 ? '0' + mi : mi);
+  }
+
+  // Date / start time / location / blinds / length — identical in Edit game and
+  // Add past game, so both build it from here. `ns` namespaces the element ids.
+  function gameFieldsHtml(ns, v){
+    return '' +
+      '<div class="gf-grid">' +
+        '<div><span class="field-label">Date</span>' +
+          '<input type="date" id="' + ns + '-date" style="margin-top:0;" value="' + (v.date || '') + '"></div>' +
+        '<div><span class="field-label">Start time</span>' +
+          '<input type="time" id="' + ns + '-time" style="margin-top:0;" value="' + (v.time || '') + '"></div>' +
+      '</div>' +
+      '<span class="field-label" style="margin-top:12px;">Location</span>' +
+      '<div class="combo">' +
+        '<input type="text" id="' + ns + '-loc" maxlength="40" style="margin-top:0;" ' +
+          'placeholder="Where was this played?" autocomplete="off" value="' + escapeHtml(v.location || '') + '">' +
+        '<div class="combo-list" id="' + ns + '-loclist"></div>' +
+      '</div>' +
+      '<div class="gf-grid" style="margin-top:12px;">' +
+        '<div><span class="field-label">Small blind</span>' +
+          '<div class="combo">' +
+            '<input type="number" inputmode="decimal" min="0" step="0.01" id="' + ns + '-sb" ' +
+              'style="margin-top:0;" placeholder="0.25" value="' +
+              (v.sb === null || v.sb === undefined ? '' : v.sb) + '">' +
+            '<div class="combo-list" id="' + ns + '-sblist"></div>' +
+          '</div></div>' +
+        '<div><span class="field-label">Big blind</span>' +
+          '<div class="combo">' +
+            '<input type="number" inputmode="decimal" min="0" step="0.01" id="' + ns + '-bb" ' +
+              'style="margin-top:0;" placeholder="0.50" value="' +
+              (v.bb === null || v.bb === undefined ? '' : v.bb) + '">' +
+            '<div class="combo-list" id="' + ns + '-bblist"></div>' +
+          '</div></div>' +
+      '</div>' +
+      '<span class="field-label" style="margin-top:12px;">Session length (hours)</span>' +
+      '<input type="number" inputmode="decimal" min="0" step="0.25" id="' + ns + '-hours" ' +
+        'style="margin-top:0;" placeholder="e.g. 4.5" value="' + (v.hours === '' ? '' : v.hours) + '">';
+  }
+
+  function attachGameFieldCombos(ns){
+    attachCombo(ns + '-loc', ns + '-loclist', locationSuggestions);
+    attachCombo(ns + '-sb', ns + '-sblist', blindSuggestions);
+    attachCombo(ns + '-bb', ns + '-bblist', blindSuggestions);
+  }
+
+  function readGameFields(ns){
+    function val(id){ return document.getElementById(ns + '-' + id).value; }
+    var sbRaw = val('sb'), bbRaw = val('bb'), hrRaw = val('hours');
+    var sb = sbRaw === '' ? null : parseFloat(sbRaw);
+    var bb = bbRaw === '' ? null : parseFloat(bbRaw);
+    var hrs = hrRaw === '' ? null : parseFloat(hrRaw);
+
+    if ((sb !== null && (isNaN(sb) || sb < 0)) || (bb !== null && (isNaN(bb) || bb < 0))){
+      return { error: 'Blinds have to be zero or more.' };
+    }
+    if (hrs !== null && (isNaN(hrs) || hrs < 0)){
+      return { error: 'Session length has to be zero or more.' };
+    }
+
+    var date = val('date');
+    var startedAt = null;
+    if (date){
+      var start = new Date(date + 'T' + (val('time') || '19:00'));
+      if (isNaN(start.getTime())) return { error: 'That date and time don\'t look right.' };
+      startedAt = start.toISOString();
+    }
+
+    return {
+      location: val('loc').trim(),
+      sb: sb, bb: bb, hours: hrs, startedAt: startedAt
+    };
+  }
+
+  // A game that runs past midnight still belongs to the night it started on, so
+  // dates come from startedAt wherever it exists.
+  function gameDate(g){
+    return g.startedAt || g.endedAt;
+  }
+
+  // Newest game first, so a backfilled old night lands in the right place.
+  function sortHistory(){
+    db.history.sort(function(a,b){
+      var ta = new Date(gameDate(a)).getTime(), tb = new Date(gameDate(b)).getTime();
+      if (isNaN(ta) || isNaN(tb)) return b.id - a.id;
+      return tb - ta;
+    });
+  }
+
+  /* ---------------- add a game that already happened ---------------- */
+
+  // For nights recorded on paper: type each player's buy-in total and what they
+  // cashed out, and it lands in history like any other saved game.
+  function addPastGame(){
+    var rows = [{ name:'', buyin:'', out:'' }, { name:'', buyin:'', out:'' }];
+
+    function rowsHtml(){
+      return rows.map(function(r, i){
+        return '<div class="pg-row">' +
+                 '<div class="combo">' +
+                   '<input type="text" id="pg-name-' + i + '" data-pgname="' + i + '" maxlength="24" ' +
+                     'placeholder="Player" autocomplete="off" value="' + escapeHtml(r.name) + '">' +
+                   '<div class="combo-list" id="pg-namelist-' + i + '"></div>' +
+                 '</div>' +
+                 '<input type="number" inputmode="decimal" min="0" step="0.01" data-pgin="' + i + '" ' +
+                   'placeholder="In" value="' + r.buyin + '">' +
+                 '<input type="number" inputmode="decimal" min="0" step="0.01" data-pgout="' + i + '" ' +
+                   'placeholder="Out" value="' + r.out + '">' +
+                 (rows.length > 1
+                   ? '<button type="button" class="btn-danger" data-pgdel="' + i + '">&times;</button>'
+                   : '<span></span>') +
+               '</div>';
+      }).join('');
+    }
+
+    function paint(){
+      document.getElementById('pg-rows').innerHTML = rowsHtml();
+      bindRows();
+      updateTally();
+    }
+
+    function bindRows(){
+      document.querySelectorAll('[data-pgname]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-pgname'));
+        inp.oninput = function(){ rows[i].name = inp.value; };
+        attachCombo('pg-name-' + i, 'pg-namelist-' + i, rosterSuggestions, function(it){
+          rows[i].name = it.value;
+        });
+      });
+      document.querySelectorAll('[data-pgin]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-pgin'));
+        inp.oninput = function(){ rows[i].buyin = inp.value; updateTally(); };
+      });
+      document.querySelectorAll('[data-pgout]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-pgout'));
+        inp.oninput = function(){ rows[i].out = inp.value; updateTally(); };
+      });
+      document.querySelectorAll('[data-pgdel]').forEach(function(btn){
+        btn.onclick = function(){
+          rows.splice(Number(btn.getAttribute('data-pgdel')), 1);
+          paint();
+        };
+      });
+    }
+
+    // Same balance check the live table does — chips out should equal chips in.
+    function updateTally(){
+      var el = document.getElementById('pg-tally');
+      if (!el) return;
+      var inSum = 0, outSum = 0, any = false;
+      rows.forEach(function(r){
+        var i = parseFloat(r.buyin), o = parseFloat(r.out);
+        if (!isNaN(i)){ inSum += i; any = true; }
+        if (!isNaN(o)){ outSum += o; any = true; }
+      });
+      if (!any) return (el.innerHTML = '');
+      var diff = round2(outSum - inSum);
+      el.innerHTML = fmt(inSum) + ' in &middot; ' + fmt(outSum) + ' out &middot; ' +
+        (Math.abs(diff) < 0.005
+          ? '<span class="balance-ok">balanced</span>'
+          : '<span class="balance-off">off by ' + fmt(Math.abs(diff)) + '</span>');
+    }
+
+    openModal({
+      title: 'Add past game',
+      body:
+        gameFieldsHtml('pg', { date: dateInputValue(null), time:'', location:'',
+                               sb: db.game.blinds.sb, bb: db.game.blinds.bb, hours:'' }) +
+        '<span class="field-label" style="margin-top:14px;">Players</span>' +
+        '<div id="pg-rows"></div>' +
+        '<button type="button" class="btn-ghost" id="pg-add" style="width:100%;margin-top:8px;">+ Add player</button>' +
+        '<div class="pg-tally" id="pg-tally"></div>' +
+        '<div class="hint" style="margin-top:8px;">' +
+          'Buy-in is their total for the night. Rebuys can be split out afterwards ' +
+          'with Edit on the player\'s line.' +
+        '</div>' +
+        '<div class="error" id="pg-error" style="display:none;"></div>',
+      onOpen: function(){
+        attachGameFieldCombos('pg');
+        paint();
+        document.getElementById('pg-add').onclick = function(){
+          rows.push({ name:'', buyin:'', out:'' });
+          paint();
+          var last = document.querySelector('[data-pgname="' + (rows.length - 1) + '"]');
+          if (last) last.focus();
+        };
+      },
+      buttons: [
+        { label: 'Save game', cls:'btn-primary', onClick: function(){
+            var err = document.getElementById('pg-error');
+            function fail(msg){
+              err.textContent = msg;
+              err.style.display = 'block';
+            }
+
+            var f = readGameFields('pg');
+            if (f.error) return fail(f.error);
+            if (!f.startedAt) return fail('Pick the date this game was played.');
+
+            var filled = rows.filter(function(r){ return r.name.trim(); });
+            if (!filled.length) return fail('Add at least one player.');
+
+            var seen = {}, bad = null;
+            filled.forEach(function(r){
+              var i = parseFloat(r.buyin), o = parseFloat(r.out);
+              if (isNaN(i) || i < 0) bad = bad || 'Enter a buy-in for ' + r.name.trim() + '.';
+              if (isNaN(o) || o < 0) bad = bad || 'Enter a cash-out for ' + r.name.trim() + '.';
+              var k = r.name.trim().toLowerCase();
+              if (seen[k]) bad = bad || 'Two players are both called ' + r.name.trim() + '.';
+              seen[k] = true;
+            });
+            if (bad) return fail(bad);
+
+            var hours = f.hours !== null && f.hours > 0 ? round2(f.hours) : null;
+            var entries = filled.map(function(r){
+              var name = r.name.trim();
+              var existing = rosterByName(name);
+              var rid = existing ? existing.id : createRoster(name);
+              var buyin = round2(parseFloat(r.buyin));
+              var out = round2(parseFloat(r.out));
+              var entry = {
+                rid: rid,
+                name: name,
+                buyins: [buyin],
+                finalStack: out,
+                net: round2(out - buyin),
+                paid: false
+              };
+              if (hours) entry.hours = hours;
+              return entry;
+            });
+
+            db.history.push({
+              id: db.nextGameId++,
+              endedAt: new Date(new Date(f.startedAt).getTime() +
+                (hours || 4) * 3600000).toISOString(),
+              startedAt: f.startedAt,
+              location: f.location,
+              bb: f.bb,
+              sb: f.sb,
+              entries: entries
+            });
+            sortHistory();
+
+            closeModal();
+            save();
+            renderAll();
+            showToast('Past game added');
+        }},
+        { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
+      ]
+    });
+  }
+
+  // Every roster player, for the Add past game name fields — unlike the Table
+  // tab's version this doesn't hide people who are seated right now.
+  function rosterSuggestions(q){
+    return db.roster
+      .filter(function(r){ return !q || r.name.toLowerCase().indexOf(q) !== -1; })
+      .map(function(r){
+        var s = statsFor(r.id);
+        return {
+          value: r.name,
+          label: r.name,
+          sub: s.sessions ? s.sessions + ' session' + (s.sessions === 1 ? '' : 's') : 'no games yet',
+          rank: q ? r.name.toLowerCase().indexOf(q) : 0,
+          sessions: s.sessions
+        };
+      })
+      .sort(function(a,b){
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        return b.sessions - a.sessions;
+      });
+  }
+
   /* ---------------- edit a saved game ---------------- */
 
   // Fills in what a game was missing after the fact: where it was played, the
@@ -3182,15 +3503,6 @@
       if (typeof e.hours === 'number' && e.hours > hoursNow) hoursNow = e.hours;
     });
 
-    var known = {};
-    db.history.forEach(function(x){
-      var loc = (x.location || '').trim();
-      if (loc) known[loc.toLowerCase()] = loc;
-    });
-    var datalist = Object.keys(known).map(function(k){
-      return '<option value="' + escapeHtml(known[k]) + '">';
-    }).join('');
-
     var d = new Date(g.endedAt);
     var when = isNaN(d.getTime()) ? 'this game'
       : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
@@ -3199,56 +3511,43 @@
       title: 'Edit game',
       body:
         '<div style="margin-bottom:4px;">' + when + ' &middot; ' + g.entries.length + ' players</div>' +
-        '<span class="field-label" style="margin-top:12px;">Location</span>' +
-        '<input type="text" id="eg-loc" maxlength="40" style="margin-top:0;" list="eg-locs" ' +
-          'placeholder="Where was this played?" autocomplete="off" value="' + escapeHtml(g.location || '') + '">' +
-        '<datalist id="eg-locs">' + datalist + '</datalist>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;">' +
-          '<div><span class="field-label">Small blind</span>' +
-            '<input type="number" inputmode="decimal" min="0" step="0.01" id="eg-sb" style="margin-top:0;" ' +
-              'placeholder="0.25" value="' + (g.sb === null || g.sb === undefined ? '' : g.sb) + '"></div>' +
-          '<div><span class="field-label">Big blind</span>' +
-            '<input type="number" inputmode="decimal" min="0" step="0.01" id="eg-bb" style="margin-top:0;" ' +
-              'placeholder="0.50" value="' + (g.bb === null || g.bb === undefined ? '' : g.bb) + '"></div>' +
-        '</div>' +
-        '<span class="field-label" style="margin-top:12px;">Session length (hours)</span>' +
-        '<input type="number" inputmode="decimal" min="0" step="0.25" id="eg-hours" style="margin-top:0;" ' +
-          'placeholder="e.g. 4.5" value="' + (hoursNow || '') + '">' +
+        gameFieldsHtml('eg', {
+          date: dateInputValue(g.startedAt || g.endedAt),
+          time: timeInputValue(g.startedAt),
+          location: g.location || '',
+          sb: g.sb, bb: g.bb,
+          hours: hoursNow || ''
+        }) +
         '<div class="hint" style="margin-top:8px;">' +
           'Blinds and length are what BB/hr is worked out from. Length applies to everyone ' +
           'in this game; per-player buy-ins and stacks stay on each line\'s Edit button.' +
         '</div>' +
         '<div class="error" id="eg-error" style="display:none;"></div>',
-      focus: 'eg-loc',
+      onOpen: function(){ attachGameFieldCombos('eg'); },
       buttons: [
         { label: 'Save game', cls:'btn-primary', onClick: function(){
             var err = document.getElementById('eg-error');
-            var sbRaw = document.getElementById('eg-sb').value;
-            var bbRaw = document.getElementById('eg-bb').value;
-            var hrRaw = document.getElementById('eg-hours').value;
-            var sb = sbRaw === '' ? null : parseFloat(sbRaw);
-            var bb = bbRaw === '' ? null : parseFloat(bbRaw);
-            var hrs = hrRaw === '' ? null : parseFloat(hrRaw);
-
-            if ((sb !== null && (isNaN(sb) || sb < 0)) || (bb !== null && (isNaN(bb) || bb < 0))){
-              err.textContent = 'Blinds have to be zero or more.';
-              err.style.display = 'block';
-              return;
-            }
-            if (hrs !== null && (isNaN(hrs) || hrs < 0)){
-              err.textContent = 'Session length has to be zero or more.';
+            var f = readGameFields('eg');
+            if (f.error){
+              err.textContent = f.error;
               err.style.display = 'block';
               return;
             }
 
-            g.location = document.getElementById('eg-loc').value.trim();
-            g.sb = sb;
-            g.bb = bb;
-            if (hrs !== null && hrs > 0){
-              g.entries.forEach(function(e){ e.hours = round2(hrs); });
-            } else if (hrs === 0 || hrs === null){
+            g.location = f.location;
+            g.sb = f.sb;
+            g.bb = f.bb;
+            if (f.startedAt){
+              g.startedAt = f.startedAt;
+              g.endedAt = new Date(new Date(f.startedAt).getTime() +
+                (f.hours || hoursNow || 4) * 3600000).toISOString();
+            }
+            if (f.hours !== null && f.hours > 0){
+              g.entries.forEach(function(e){ e.hours = round2(f.hours); });
+            } else {
               g.entries.forEach(function(e){ delete e.hours; });
             }
+            sortHistory();
 
             closeModal();
             save();
@@ -3516,6 +3815,7 @@
     if (e.key === 'Enter') addPlayerFlow();
   });
 
+  document.getElementById('add-past-btn').onclick = addPastGame;
   document.getElementById('end-btn').onclick = endGame;
   document.getElementById('reset-btn').onclick = discardGame;
 
