@@ -377,6 +377,36 @@
 
   /* ---------- game-detail form (Edit game / Add past game) ---------- */
   .gf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  /* ---------- read-only shared view ---------- */
+  .view-banner{
+    max-width:720px;margin:0 auto 6px;padding:9px 14px;
+    background:var(--felt-800);border:1px solid var(--felt-600);
+    border-radius:9px;font-size:11.5px;color:var(--text-mid);
+    text-align:center;line-height:1.45;
+  }
+  body.view-only [data-tab="table"],
+  body.view-only [data-tab="chips"],
+  body.view-only [data-tab="seats"],
+  body.view-only [data-tab="pay"],
+  body.view-only #add-past-btn,
+  body.view-only #share-section,
+  body.view-only [data-editgame],
+  body.view-only [data-delgame],
+  body.view-only [data-editentry],
+  body.view-only [data-rename],
+  body.view-only [data-delroster],
+  body.view-only .btn-venmo,
+  body.view-only .game-line-actions,
+  body.view-only #backup-import{display:none !important;}
+  .modal textarea{
+    background:var(--ink-2);border:1px solid var(--line);border-radius:7px;
+    padding:9px 10px;color:var(--text-hi);font-size:12px;font-family:inherit;
+    width:100%;outline:none;resize:vertical;word-break:break-all;
+  }
+
+  .gf-length{margin-top:10px;font-size:12px;color:var(--text-mid);}
+  .gf-length b{color:var(--gold);}
+  .gf-length-lo{color:var(--text-lo);}
   .modal input[type=date],
   .modal input[type=time]{
     background:var(--ink-2);border:1px solid var(--line);border-radius:7px;
@@ -597,6 +627,10 @@
   <h1>Poker <span class="suit">&spades;</span> Ledger</h1>
   <p>Buy-ins, rebuys, cash-outs, and who owes who</p>
 </header>
+
+<div class="view-banner" id="view-banner" style="display:none;">
+  Read-only &mdash; a shared snapshot of someone else's ledger. Nothing here changes your own.
+</div>
 
 <div class="tabs">
   <button class="tab active" data-tab="table">Table</button>
@@ -855,6 +889,19 @@
         </div>
       </div>
     </div>
+
+    <div class="section" id="share-section">
+      <div class="section-title">Share with the table</div>
+      <div class="card">
+        <div class="hint">
+          Sends everyone a link that shows these stats, past games and graphs, with
+          nothing they can edit. Their own ledger stays their own.
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-gold" id="share-btn">Get read-only link</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ PAY ============ -->
@@ -1073,7 +1120,12 @@
 
   /* ---------------- persistence ---------------- */
 
+  // Set when the app is showing someone else's shared ledger. Nothing is ever
+  // written to storage in that state, so a viewer's own games can't be clobbered.
+  var viewOnly = false;
+
   function save(){
+    if (viewOnly) return;
     try{
       localStorage.setItem(KEY, JSON.stringify(db));
     }catch(e){}
@@ -2312,6 +2364,15 @@
       }
     }
 
+    // A stack this deep means the top chip is too small for the buy-in — no
+    // arrangement of the colours fixes that, so say so rather than shuffling.
+    var topValue = db.colors.reduce(function(m,c){ return Math.max(m, c.value || 0); }, 0);
+    if (chips > 80 && topValue > 0 && !isNaN(target) && target > 0){
+      note.innerHTML += '<br><span class="gf-length-lo">That\'s a deep stack to hand out. ' +
+        'A chip worth ' + fmt(topValue * 5) + ' would cut it to roughly ' +
+        Math.round(chips / 4) + '.</span>';
+    }
+
     var bulk = document.getElementById('plan-bulk');
     var stacks = parseInt(db.plan.stacks, 10);
     if (!isNaN(stacks) && stacks > 1 && chips > 0){
@@ -2331,41 +2392,81 @@
   // Fills chip counts to match a target buy-in, weighting smaller denominations
   // more heavily (rank-weighted split) so a stack has plenty of chips to make
   // change with instead of just a handful of the highest-value color.
+  // One playable stack, not an even split of the money across colours. The two
+  // smallest chips are change — you only need a handful to post blinds and make
+  // odd bets — so they get a fixed small allowance, and the bulk of the buy-in
+  // goes into the biggest chips. Splitting the money evenly is what produced
+  // stacks like 144 nickels.
+  function buildStack(targetCents, denomsAsc){
+    var counts = {};
+    denomsAsc.forEach(function(d){ counts[d.key] = 0; });
+    if (!denomsAsc.length || targetCents <= 0) return counts;
+
+    // 1. Change: up to 10 of each of the two smallest, and never more than
+    //    ~6% of the buy-in tied up in any one of them.
+    var used = 0;
+    denomsAsc.slice(0, 2).forEach(function(d){
+      var n = Math.min(10, Math.floor(targetCents * 0.06 / d.cents));
+      if (n > 0){ counts[d.key] = n; used += n * d.cents; }
+    });
+
+    // 2. The rest, weighted hard toward the top of the set so the stack stays
+    //    small enough to actually handle.
+    var big = (denomsAsc.length > 2 ? denomsAsc.slice(2) : denomsAsc.slice()).reverse();
+    var WEIGHTS = [0.75, 0.20, 0.05];
+    var remaining = targetCents - used;
+    var allocated = 0;
+
+    for (var i = 0; i < big.length - 1; i++){
+      var w = WEIGHTS[i] === undefined ? 0 : WEIGHTS[i];
+      var n = Math.floor(remaining * w / big[i].cents);
+      if (n > 0){
+        counts[big[i].key] += n;
+        allocated += n * big[i].cents;
+      }
+    }
+
+    var leftover = remaining - allocated;
+    var last = big[big.length - 1];
+    var lastN = Math.floor(leftover / last.cents);
+    if (lastN > 0){
+      counts[last.key] += lastN;
+      leftover -= lastN * last.cents;
+    }
+
+    // 3. Close out the final few cents with the largest chips that still fit,
+    //    so the remainder doesn't come back as a pile of nickels.
+    denomsAsc.slice().reverse().forEach(function(d){
+      while (leftover >= d.cents){
+        counts[d.key]++;
+        leftover -= d.cents;
+      }
+    });
+
+    return counts;
+  }
+
   function autoFillPlan(){
     var target = parseFloat(db.plan.target);
     if (isNaN(target) || target <= 0){
       showToast('Set a buy-in amount first');
       return;
     }
-    var targetCents = Math.round(target * 100);
-    var sorted = db.colors.slice().sort(function(a,b){ return a.value - b.value; });
-    var n = sorted.length;
-    var weights = sorted.map(function(c, i){ return n - i; });
-    var totalWeight = weights.reduce(function(s,w){ return s + w; }, 0);
 
-    var counts = {};
-    var usedCents = 0;
-    sorted.forEach(function(c, i){
-      var valCents = Math.round(c.value * 100);
-      if (valCents <= 0){ counts[c.key] = 0; return; }
-      var shareCents = Math.round(targetCents * weights[i] / totalWeight);
-      var n_i = Math.max(0, Math.round(shareCents / valCents));
-      counts[c.key] = n_i;
-      usedCents += n_i * valCents;
-    });
+    var denomsAsc = db.colors
+      .map(function(c){ return { key:c.key, cents: Math.round(c.value * 100) }; })
+      .filter(function(d){ return d.cents > 0; })
+      .sort(function(a,b){ return a.cents - b.cents; });
 
-    // True up any rounding error with the smallest denomination so the stack lands exactly on target.
-    var smallest = sorted[0];
-    var smallCents = smallest ? Math.round(smallest.value * 100) : 0;
-    if (smallCents > 0){
-      var diff = targetCents - usedCents;
-      counts[smallest.key] = Math.max(0, counts[smallest.key] + Math.round(diff / smallCents));
+    if (!denomsAsc.length){
+      showToast('Set your chip values first');
+      return;
     }
 
-    db.plan.counts = counts;
+    db.plan.counts = buildStack(Math.round(target * 100), denomsAsc);
     save();
     renderPlan();
-    showToast('Filled a ' + fmt(target) + ' stack');
+    showToast('Filled one ' + fmt(target) + ' stack');
   }
 
   /* ---------------- seat generator ---------------- */
@@ -3221,11 +3322,13 @@
   // Add past game, so both build it from here. `ns` namespaces the element ids.
   function gameFieldsHtml(ns, v){
     return '' +
-      '<div class="gf-grid">' +
-        '<div><span class="field-label">Date</span>' +
-          '<input type="date" id="' + ns + '-date" style="margin-top:0;" value="' + (v.date || '') + '"></div>' +
+      '<span class="field-label">Date</span>' +
+      '<input type="date" id="' + ns + '-date" style="margin-top:0;" value="' + (v.date || '') + '">' +
+      '<div class="gf-grid" style="margin-top:12px;">' +
         '<div><span class="field-label">Start time</span>' +
           '<input type="time" id="' + ns + '-time" style="margin-top:0;" value="' + (v.time || '') + '"></div>' +
+        '<div><span class="field-label">End time</span>' +
+          '<input type="time" id="' + ns + '-endtime" style="margin-top:0;" value="' + (v.endTime || '') + '"></div>' +
       '</div>' +
       '<span class="field-label" style="margin-top:12px;">Location</span>' +
       '<div class="combo">' +
@@ -3249,42 +3352,68 @@
             '<div class="combo-list" id="' + ns + '-bblist"></div>' +
           '</div></div>' +
       '</div>' +
-      '<span class="field-label" style="margin-top:12px;">Session length (hours)</span>' +
-      '<input type="number" inputmode="decimal" min="0" step="0.25" id="' + ns + '-hours" ' +
-        'style="margin-top:0;" placeholder="e.g. 4.5" value="' + (v.hours === '' ? '' : v.hours) + '">';
+      '<div class="gf-length" id="' + ns + '-length"></div>';
   }
 
   function attachGameFieldCombos(ns){
     attachCombo(ns + '-loc', ns + '-loclist', locationSuggestions);
     attachCombo(ns + '-sb', ns + '-sblist', blindSuggestions);
     attachCombo(ns + '-bb', ns + '-bblist', blindSuggestions);
+
+    // Length is derived from the two clocks rather than typed.
+    ['date','time','endtime'].forEach(function(id){
+      var el = document.getElementById(ns + '-' + id);
+      if (el) el.addEventListener('input', function(){ showGameLength(ns); });
+    });
+    showGameLength(ns);
+  }
+
+  function showGameLength(ns){
+    var el = document.getElementById(ns + '-length');
+    if (!el) return;
+    var f = readGameFields(ns);
+    if (f.error || f.hours === null){
+      el.innerHTML = '<span class="gf-length-lo">Add a start and end time to get session length ' +
+                     'and BB/hr.</span>';
+      return;
+    }
+    el.innerHTML = 'Session length <b>' + fmtHours(f.hours) + '</b>';
   }
 
   function readGameFields(ns){
-    function val(id){ return document.getElementById(ns + '-' + id).value; }
-    var sbRaw = val('sb'), bbRaw = val('bb'), hrRaw = val('hours');
+    function val(id){
+      var el = document.getElementById(ns + '-' + id);
+      return el ? el.value : '';
+    }
+    var sbRaw = val('sb'), bbRaw = val('bb');
     var sb = sbRaw === '' ? null : parseFloat(sbRaw);
     var bb = bbRaw === '' ? null : parseFloat(bbRaw);
-    var hrs = hrRaw === '' ? null : parseFloat(hrRaw);
 
     if ((sb !== null && (isNaN(sb) || sb < 0)) || (bb !== null && (isNaN(bb) || bb < 0))){
       return { error: 'Blinds have to be zero or more.' };
     }
-    if (hrs !== null && (isNaN(hrs) || hrs < 0)){
-      return { error: 'Session length has to be zero or more.' };
-    }
 
     var date = val('date');
-    var startedAt = null;
+    var startedAt = null, endedAt = null, hours = null;
     if (date){
       var start = new Date(date + 'T' + (val('time') || '19:00'));
       if (isNaN(start.getTime())) return { error: 'That date and time don\'t look right.' };
       startedAt = start.toISOString();
+
+      if (val('endtime')){
+        var end = new Date(date + 'T' + val('endtime'));
+        if (isNaN(end.getTime())) return { error: 'That end time doesn\'t look right.' };
+        // An end time earlier than the start means the game ran past midnight.
+        if (end.getTime() <= start.getTime()) end = new Date(end.getTime() + 86400000);
+        endedAt = end.toISOString();
+        hours = round2((end.getTime() - start.getTime()) / 3600000);
+      }
     }
 
     return {
       location: val('loc').trim(),
-      sb: sb, bb: bb, hours: hrs, startedAt: startedAt
+      sb: sb, bb: bb,
+      hours: hours, startedAt: startedAt, endedAt: endedAt
     };
   }
 
@@ -3380,8 +3509,8 @@
     openModal({
       title: 'Add past game',
       body:
-        gameFieldsHtml('pg', { date: dateInputValue(null), time:'', location:'',
-                               sb: db.game.blinds.sb, bb: db.game.blinds.bb, hours:'' }) +
+        gameFieldsHtml('pg', { date: dateInputValue(null), time:'', endTime:'', location:'',
+                               sb: db.game.blinds.sb, bb: db.game.blinds.bb }) +
         '<span class="field-label" style="margin-top:14px;">Players</span>' +
         '<div id="pg-rows"></div>' +
         '<button type="button" class="btn-ghost" id="pg-add" style="width:100%;margin-top:8px;">+ Add player</button>' +
@@ -3448,7 +3577,7 @@
 
             db.history.push({
               id: db.nextGameId++,
-              endedAt: new Date(new Date(f.startedAt).getTime() +
+              endedAt: f.endedAt || new Date(new Date(f.startedAt).getTime() +
                 (hours || 4) * 3600000).toISOString(),
               startedAt: f.startedAt,
               location: f.location,
@@ -3514,13 +3643,14 @@
         gameFieldsHtml('eg', {
           date: dateInputValue(g.startedAt || g.endedAt),
           time: timeInputValue(g.startedAt),
+          endTime: timeInputValue(g.startedAt ? g.endedAt : null),
           location: g.location || '',
-          sb: g.sb, bb: g.bb,
-          hours: hoursNow || ''
+          sb: g.sb, bb: g.bb
         }) +
         '<div class="hint" style="margin-top:8px;">' +
-          'Blinds and length are what BB/hr is worked out from. Length applies to everyone ' +
-          'in this game; per-player buy-ins and stacks stay on each line\'s Edit button.' +
+          'Blinds and the two times are what BB/hr is worked out from, and the length ' +
+          'applies to everyone in this game. Per-player buy-ins and stacks stay on each ' +
+          'line\'s Edit button. An end time before the start counts as past midnight.' +
         '</div>' +
         '<div class="error" id="eg-error" style="display:none;"></div>',
       onOpen: function(){ attachGameFieldCombos('eg'); },
@@ -3539,11 +3669,11 @@
             g.bb = f.bb;
             if (f.startedAt){
               g.startedAt = f.startedAt;
-              g.endedAt = new Date(new Date(f.startedAt).getTime() +
-                (f.hours || hoursNow || 4) * 3600000).toISOString();
+              g.endedAt = f.endedAt || new Date(new Date(f.startedAt).getTime() +
+                (hoursNow || 4) * 3600000).toISOString();
             }
             if (f.hours !== null && f.hours > 0){
-              g.entries.forEach(function(e){ e.hours = round2(f.hours); });
+              g.entries.forEach(function(e){ e.hours = f.hours; });
             } else {
               g.entries.forEach(function(e){ delete e.hours; });
             }
@@ -3590,7 +3720,8 @@
         inp.oninput = function(){
           var idx = Number(inp.getAttribute('data-editbuyin'));
           var v = parseFloat(inp.value);
-          buyins[idx] = isNaN(v) ? 0 : v;
+          // Keep an empty box empty rather than snapping it back to 0.
+          buyins[idx] = (inp.value === '' || isNaN(v)) ? '' : v;
         };
       });
       document.querySelectorAll('[data-removebuyin]').forEach(function(btn){
@@ -3615,7 +3746,9 @@
       buttons: [
         { label: 'Save changes', cls:'btn-primary', onClick: function(){
             var err = document.getElementById('edit-entry-error');
-            if (!buyins.length || buyins.some(function(b){ return isNaN(b) || b < 0; })){
+            if (!buyins.length || buyins.some(function(b){
+                  return b === '' || b === null || isNaN(b) || b < 0;
+                })){
               err.textContent = 'Enter a valid amount for each buy-in';
               err.style.display = 'block';
               return;
@@ -3640,10 +3773,176 @@
 
     bindRows();
     document.getElementById('edit-addbuyin').onclick = function(){
-      buyins.push(0);
+      // Empty, not 0 — a prefilled zero turns a typed "5" into "05" or "50".
+      buyins.push('');
       document.getElementById('edit-buyin-rows').innerHTML = rowsHtml();
       bindRows();
     };
+  }
+
+  /* ---------------- read-only share link ---------------- */
+
+  // The whole ledger travels inside the link's #fragment, which browsers never
+  // send to the server — there's no backend here to send it to anyway. Keys are
+  // shortened and timestamps become epoch numbers to keep the URL manageable,
+  // and Venmo handles are deliberately left out.
+  function sharePayload(){
+    return {
+      v: 1,
+      n: (db.venmoUser || 'Poker') && 'Poker Ledger',
+      r: db.roster.map(function(r){ return [r.id, r.name]; }),
+      g: db.history.map(function(g){
+        return [
+          g.id,
+          Date.parse(g.startedAt) || 0,
+          Date.parse(g.endedAt) || 0,
+          g.location || '',
+          g.sb || 0,
+          g.bb || 0,
+          g.entries.map(function(e){
+            return [e.rid, e.name, entryBuyins(e), e.finalStack, e.net,
+                    typeof e.hours === 'number' ? e.hours : 0];
+          })
+        ];
+      })
+    };
+  }
+
+  function expandShare(p){
+    return {
+      roster: (p.r || []).map(function(a){ return { id:a[0], name:a[1], venmo:'' }; }),
+      history: (p.g || []).map(function(a){
+        return {
+          id: a[0],
+          startedAt: a[1] ? new Date(a[1]).toISOString() : null,
+          endedAt: a[2] ? new Date(a[2]).toISOString() : (a[1] ? new Date(a[1]).toISOString() : null),
+          location: a[3] || '',
+          sb: a[4] || null,
+          bb: a[5] || null,
+          entries: (a[6] || []).map(function(b){
+            var e = { rid:b[0], name:b[1], buyins:b[2], finalStack:b[3], net:b[4], paid:false };
+            if (b[5]) e.hours = b[5];
+            return e;
+          })
+        };
+      })
+    };
+  }
+
+  function b64url(bytes){
+    var s = '';
+    for (var i = 0; i < bytes.length; i += 0x8000){
+      s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function unb64url(str){
+    var s = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    var bin = atob(s);
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  // 'z' = deflated, 'j' = plain JSON. Compression is roughly 5x on this data but
+  // isn't in every browser, so the plain form stays as a fallback.
+  function encodeShare(obj, cb){
+    var bytes = new TextEncoder().encode(JSON.stringify(obj));
+    if (window.CompressionStream){
+      try{
+        var stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+        new Response(stream).arrayBuffer().then(function(buf){
+          cb('z' + b64url(new Uint8Array(buf)));
+        }).catch(function(){ cb('j' + b64url(bytes)); });
+        return;
+      }catch(err){}
+    }
+    cb('j' + b64url(bytes));
+  }
+
+  function decodeShare(code, cb){
+    var kind = code.charAt(0);
+    var bytes;
+    try{ bytes = unb64url(code.slice(1)); }
+    catch(err){ return cb(null); }
+
+    function parse(u8){
+      try{ cb(JSON.parse(new TextDecoder().decode(u8))); }
+      catch(err){ cb(null); }
+    }
+
+    if (kind === 'z'){
+      if (!window.DecompressionStream) return cb(null);
+      try{
+        var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        new Response(stream).arrayBuffer()
+          .then(function(buf){ parse(new Uint8Array(buf)); })
+          .catch(function(){ cb(null); });
+      }catch(err){ cb(null); }
+      return;
+    }
+    parse(bytes);
+  }
+
+  function shareLink(){
+    if (!db.history.length) return showToast('No saved games to share yet');
+    encodeShare(sharePayload(), function(code){
+      var url = location.origin + location.pathname + '#v=' + code;
+      var kb = Math.round(url.length / 102.4) / 10;
+      openModal({
+        title: 'Share read-only link',
+        body:
+          'Anyone with this link sees your stats, past games and graphs. They ' +
+          'cannot add or change anything, and their own ledger is untouched.' +
+          '<textarea id="share-url" readonly rows="4" style="width:100%;margin-top:10px;">' +
+            escapeHtml(url) + '</textarea>' +
+          '<div class="hint" style="margin-top:8px;">' +
+            db.history.length + ' game' + (db.history.length === 1 ? '' : 's') +
+            ' &middot; ' + kb + ' KB link. The whole ledger travels inside the link itself, so ' +
+            'it is a <strong>snapshot</strong> — after your next game, send a fresh link. ' +
+            'Venmo usernames are never included.' +
+          '</div>',
+        buttons: [
+          { label: 'Copy link', cls:'btn-primary', onClick: function(){
+              var ta = document.getElementById('share-url');
+              ta.select();
+              if (navigator.clipboard && navigator.clipboard.writeText){
+                navigator.clipboard.writeText(url)
+                  .then(function(){ showToast('Share link copied'); })
+                  .catch(function(){ showToast('Select the text and copy it'); });
+              } else {
+                showToast('Select the text and copy it');
+              }
+          }},
+          { label: 'Done', cls:'btn-ghost', onClick: closeModal }
+        ]
+      });
+    });
+  }
+
+  // Someone opened a shared link: show that ledger, never touch theirs.
+  function startViewMode(code){
+    decodeShare(code, function(payload){
+      if (!payload || !payload.g){
+        showToast('That share link could not be read');
+        load();
+        renderAll();
+        return;
+      }
+      var data = expandShare(payload);
+      normalizeDb();
+      db.roster = data.roster;
+      db.history = data.history;
+      db.game = { players: [], location:'', blinds:{ sb:0.25, bb:0.50 }, startedAt:null };
+      db.nextRosterId = db.roster.reduce(function(m,r){ return Math.max(m, r.id); }, 0) + 1;
+      viewOnly = true;
+      document.body.classList.add('view-only');
+      document.getElementById('view-banner').style.display = 'block';
+      renderAll();
+      switchTab('stats');
+    });
   }
 
   /* ---------------- backup / restore ---------------- */
@@ -3979,6 +4278,7 @@
     if (e.key === 'Enter') this.blur();
   });
 
+  document.getElementById('share-btn').onclick = shareLink;
   document.getElementById('backup-export').onclick = exportBackup;
   document.getElementById('backup-import').onclick = importBackup;
 
@@ -4000,8 +4300,15 @@
     }
   };
 
-  load();
-  renderAll();
+  // A #v= fragment means this is a shared ledger, not the owner's own.
+  var shared = /^#v=/.test(location.hash) ? location.hash.slice(3) : null;
+  if (shared){
+    load();
+    startViewMode(shared);
+  } else {
+    load();
+    renderAll();
+  }
 })();
 </script>
 </body>
