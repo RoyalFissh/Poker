@@ -163,6 +163,19 @@
 
   /* ---------- player rows ---------- */
   .players{display:flex;flex-direction:column;gap:10px;}
+  /* One-line summary of a player: the "how much am I in for?" answer. */
+  .player-line{
+    display:grid;grid-template-columns:minmax(0,1fr) auto auto;
+    gap:10px;align-items:center;text-align:left;
+    width:100%;font-family:inherit;font-weight:400;
+  }
+  .player-line .pl-name{
+    font-size:14px;font-weight:700;color:var(--text-hi);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .player-line .pl-in{font-size:11.5px;color:var(--gold);white-space:nowrap;}
+  .player-line .pl-net{font-size:13px;font-weight:700;white-space:nowrap;min-width:56px;text-align:right;}
+  .player-line:active{border-color:var(--felt-500);}
   .player-row{
     background:var(--ink-1);
     border:1px solid var(--line);
@@ -376,7 +389,14 @@
   .amt-rebuy{color:#d0883c;}
 
   /* ---------- game-detail form (Edit game / Add past game) ---------- */
-  .gf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  /* Native date/time controls have a wide intrinsic size — min-width:0 lets
+     them shrink into the grid instead of spilling over each other. */
+  .gf-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .gf-grid > div{min-width:0;}
+  .gf-field{text-align:center;}
+  .modal .gf-field input{text-align:center;padding-left:4px;padding-right:4px;min-width:0;}
+  .modal input[type=date],
+  .modal input[type=time]{-webkit-appearance:none;appearance:none;}
   /* ---------- read-only shared view ---------- */
   .view-banner{
     max-width:720px;margin:0 auto 6px;padding:9px 14px;
@@ -702,7 +722,10 @@
     <div class="section">
       <div class="section-title">
         <span>Players</span>
-        <span id="player-count" style="font-size:11px;"></span>
+        <span>
+          <span id="player-count" style="font-size:11px;"></span>
+          <button class="btn-mini" id="players-mode" style="margin-left:8px;">Compact</button>
+        </span>
       </div>
       <div class="players" id="players-list"></div>
       <div class="empty" id="empty-state">No players yet. Add someone above to start the game.</div>
@@ -854,10 +877,27 @@
         </div>
       </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">Roster</div>
+      <div class="card" id="roster-card"></div>
+    </div>
   </div>
 
   <!-- ============ HISTORY ============ -->
   <div class="panel" id="panel-history">
+    <div class="section" id="share-section" style="margin-top:14px;">
+      <div class="card">
+        <div class="toolbar" style="margin-top:0;">
+          <button class="btn-gold" id="share-btn">Share read-only link</button>
+        </div>
+        <div class="hint" style="margin-top:10px;">
+          Everyone sees these games, stats and graphs; nobody can change them, and
+          their own ledger stays their own.
+        </div>
+      </div>
+    </div>
+
     <div class="section">
       <div class="section-title">
         <span>Past games</span>
@@ -867,40 +907,6 @@
         + Add past game
       </button>
       <div id="history-list"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Roster</div>
-      <div class="card" id="roster-card"></div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">Backup &amp; restore</div>
-      <div class="card">
-        <div class="hint">
-          Everything is stored on this device only, inside whichever app you're using right now.
-          A Safari tab and a home-screen icon for the same link keep <strong>separate</strong> data
-          on iOS &mdash; so pick one and stick with it, and use this to move data over or keep a
-          copy just in case.
-        </div>
-        <div class="toolbar" style="margin-top:14px;">
-          <button class="btn-ghost" id="backup-export">Export data</button>
-          <button class="btn-ghost" id="backup-import">Import data</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="section" id="share-section">
-      <div class="section-title">Share with the table</div>
-      <div class="card">
-        <div class="hint">
-          Sends everyone a link that shows these stats, past games and graphs, with
-          nothing they can edit. Their own ledger stays their own.
-        </div>
-        <div class="toolbar" style="margin-top:14px;">
-          <button class="btn-gold" id="share-btn">Get read-only link</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -929,6 +935,22 @@
         </div>
         <div class="hint" style="margin-top:14px;">
           Hand them your phone to scan, or tap Open Venmo if you're paying from this device.
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Backup &amp; restore</div>
+      <div class="card">
+        <div class="hint">
+          Everything is stored on this device only, inside whichever app you're using right now.
+          A Safari tab and a home-screen icon for the same link keep <strong>separate</strong> data
+          on iOS &mdash; so pick one and stick with it, and use this to move data over or keep a
+          copy just in case.
+        </div>
+        <div class="toolbar" style="margin-top:14px;">
+          <button class="btn-ghost" id="backup-export">Export data</button>
+          <button class="btn-ghost" id="backup-import">Import data</button>
         </div>
       </div>
     </div>
@@ -996,6 +1018,8 @@
     seats: { size:8, taken:[], last:null },    // taken: [{ seat, name }]
     venmoUser: 'kevinpark4',
     graphRid: null,      // which player the Profit graph section is showing
+    playersCompact: true,// Table tab: one line per player until you tap one
+    expandedRid: null,
     nextRosterId: 1,
     nextGameId: 1
   };
@@ -1065,6 +1089,11 @@
     var net = netOf(p);
     if (!bb || net === null || h < 0.05) return null;
     return (net / bb) / h;
+  }
+
+  // "5¢ - 10¢" / "$1 - $2" — spaced so the two blinds read as two numbers.
+  function stakesLabel(sb, bb){
+    return denomLabel(sb || 0) + ' - ' + denomLabel(bb || 0);
   }
 
   // A count of big blinds, not money — no dollar sign.
@@ -1148,6 +1177,7 @@
         if (p.seats) db.seats = p.seats;
         if (typeof p.venmoUser === 'string') db.venmoUser = p.venmoUser;
         if (typeof p.graphRid === 'number') db.graphRid = p.graphRid;
+        if (typeof p.playersCompact === 'boolean') db.playersCompact = p.playersCompact;
       }catch(e){}
     } else {
       migrateOld();
@@ -1294,7 +1324,7 @@
 
   function statsFor(rid){
     var sessions = 0, total = 0, best = null, worst = null, totalBuyin = 0, rebuys = 0;
-    var bbWon = 0, bbHours = 0;
+    var bbWon = 0, bbHours = 0, bbSessions = 0;
     db.history.forEach(function(g){
       g.entries.forEach(function(e){
         if (e.rid !== rid) return;
@@ -1309,6 +1339,7 @@
         if (typeof e.hours === 'number' && e.hours > 0 && typeof g.bb === 'number' && g.bb > 0){
           bbWon += e.net / g.bb;
           bbHours += e.hours;
+          bbSessions++;
         }
       });
     });
@@ -1324,7 +1355,8 @@
       avgBuyin: sessions ? round2(totalBuyin / sessions) : 0,
       roi: roiOf(total, totalBuyin),
       hours: round2(bbHours),
-      bbPerHour: bbHours > 0 ? bbWon / bbHours : null
+      bbPerHour: bbHours > 0 ? bbWon / bbHours : null,
+      bbSessions: bbSessions
     };
   }
 
@@ -1688,9 +1720,31 @@
     empty.style.display = db.game.players.length ? 'none' : 'block';
     count.textContent = db.game.players.length ? db.game.players.length + ' at the table' : '';
 
+    var toggle = document.getElementById('players-mode');
+    toggle.style.display = db.game.players.length ? 'inline-block' : 'none';
+    toggle.textContent = db.playersCompact ? 'Expand all' : 'Compact';
+
     db.game.players.forEach(function(p){
       var tin = totalIn(p);
       var net = netOf(p);
+
+      // Compact rows answer "how much am I in for?" without scrolling; tap one
+      // to open just that player for editing.
+      if (db.playersCompact && p.rid !== db.expandedRid){
+        var line = document.createElement('button');
+        line.className = 'player-row player-line';
+        line.setAttribute('data-expand', p.rid);
+        line.innerHTML =
+          '<span class="pl-name">' + escapeHtml(nameOf(p.rid)) + '</span>' +
+          '<span class="pl-in">' + fmt(tin) + ' in' +
+            (p.buyins.length > 1 ? ' <span class="amt-rebuy">+' + (p.buyins.length - 1) + '</span>' : '') +
+          '</span>' +
+          '<span class="pl-net ' + (net === null ? 'zero' : (net > 0 ? 'pos' : (net < 0 ? 'neg' : 'zero'))) + '">' +
+            (net === null ? '—' : fmt(net)) + '</span>';
+        list.appendChild(line);
+        return;
+      }
+
       var row = document.createElement('div');
       row.className = 'player-row';
 
@@ -1729,7 +1783,12 @@
             '<div class="player-name">' + escapeHtml(nameOf(p.rid)) + '</div>' +
             '<div class="rebuy-list">' + rebuyText + ' &middot; total in ' + fmt(tin) + '</div>' +
           '</div>' +
-          '<button class="btn-danger" data-remove="' + p.rid + '">Remove</button>' +
+          '<div style="display:flex;gap:6px;flex:0 0 auto;">' +
+            (db.playersCompact
+              ? '<button class="btn-mini" data-collapse="' + p.rid + '">Done</button>'
+              : '') +
+            '<button class="btn-danger" data-remove="' + p.rid + '">Remove</button>' +
+          '</div>' +
         '</div>' +
         stackHtml +
         '<div class="row-actions">' +
@@ -1748,6 +1807,22 @@
   }
 
   function bindPlayerEvents(){
+    document.querySelectorAll('[data-expand]').forEach(function(row){
+      row.onclick = function(){
+        db.expandedRid = Number(row.getAttribute('data-expand'));
+        renderPlayers();
+        save();
+      };
+    });
+
+    document.querySelectorAll('[data-collapse]').forEach(function(btn){
+      btn.onclick = function(){
+        db.expandedRid = null;
+        renderPlayers();
+        save();
+      };
+    });
+
     document.querySelectorAll('[data-remove]').forEach(function(btn){
       btn.onclick = function(){
         var rid = Number(btn.getAttribute('data-remove'));
@@ -2392,54 +2467,68 @@
   // Fills chip counts to match a target buy-in, weighting smaller denominations
   // more heavily (rank-weighted split) so a stack has plenty of chips to make
   // change with instead of just a handful of the highest-value color.
-  // One playable stack, not an even split of the money across colours. The two
-  // smallest chips are change — you only need a handful to post blinds and make
-  // odd bets — so they get a fixed small allowance, and the bulk of the buy-in
-  // goes into the biggest chips. Splitting the money evenly is what produced
-  // stacks like 144 nickels.
+  // A stack shaped the way a real one is: about fifteen of each of the two
+  // smallest colours for blinds and change, the bulk in the middle colour, and
+  // only a couple of the biggest. Counts decay by 4x for each step up from the
+  // middle, and the money is fitted to that shape rather than the other way
+  // round — splitting the buy-in evenly by value is what produced 144 nickels.
+  var STACK_CHANGE_CHIPS = 15;   // of each of the two smallest colours
+  var STACK_MAX_PER_COLOUR = 30; // beyond this a colour is unwieldy to count
+  var STACK_DECAY = 0.25;        // each colour up gets a quarter of the count
+
   function buildStack(targetCents, denomsAsc){
     var counts = {};
     denomsAsc.forEach(function(d){ counts[d.key] = 0; });
     if (!denomsAsc.length || targetCents <= 0) return counts;
 
-    // 1. Change: up to 10 of each of the two smallest, and never more than
-    //    ~6% of the buy-in tied up in any one of them.
+    // 1. Change chips: fifteen each, but never more than 8% of the buy-in tied
+    //    up in any one colour, so a small buy-in doesn't drown in nickels.
     var used = 0;
     denomsAsc.slice(0, 2).forEach(function(d){
-      var n = Math.min(10, Math.floor(targetCents * 0.06 / d.cents));
+      var n = Math.min(STACK_CHANGE_CHIPS, Math.floor(targetCents * 0.08 / d.cents));
       if (n > 0){ counts[d.key] = n; used += n * d.cents; }
     });
 
-    // 2. The rest, weighted hard toward the top of the set so the stack stays
-    //    small enough to actually handle.
-    var big = (denomsAsc.length > 2 ? denomsAsc.slice(2) : denomsAsc.slice()).reverse();
-    var WEIGHTS = [0.75, 0.20, 0.05];
     var remaining = targetCents - used;
-    var allocated = 0;
+    if (remaining <= 0) return counts;
 
-    for (var i = 0; i < big.length - 1; i++){
-      var w = WEIGHTS[i] === undefined ? 0 : WEIGHTS[i];
-      var n = Math.floor(remaining * w / big[i].cents);
-      if (n > 0){
-        counts[big[i].key] += n;
-        allocated += n * big[i].cents;
-      }
+    // 2. Everything above those two, weighted so the smallest of them — the
+    //    middle of the set — carries the stack. A colour that would need more
+    //    than 30 chips is capped and its share moves up to the bigger colours.
+    var pool = denomsAsc.length > 2
+      ? denomsAsc.slice(2)
+      : [denomsAsc[denomsAsc.length - 1]];
+
+    for (var pass = 0; pass < 4 && pool.length && remaining > 0; pass++){
+      var weightedValue = 0;
+      pool.forEach(function(d, i){ weightedValue += Math.pow(STACK_DECAY, i) * d.cents; });
+      if (weightedValue <= 0) break;
+
+      var scale = remaining / weightedValue;
+      var capped = false;
+      var next = [];
+
+      pool.forEach(function(d, i){
+        var n = Math.round(scale * Math.pow(STACK_DECAY, i));
+        if (n > STACK_MAX_PER_COLOUR){ n = STACK_MAX_PER_COLOUR; capped = true; }
+        else next.push(d);
+        n = Math.min(n, Math.floor(remaining / d.cents));
+        if (n > 0){
+          counts[d.key] += n;
+          remaining -= n * d.cents;
+        }
+      });
+
+      if (!capped) break;
+      pool = next;
     }
 
-    var leftover = remaining - allocated;
-    var last = big[big.length - 1];
-    var lastN = Math.floor(leftover / last.cents);
-    if (lastN > 0){
-      counts[last.key] += lastN;
-      leftover -= lastN * last.cents;
-    }
-
-    // 3. Close out the final few cents with the largest chips that still fit,
-    //    so the remainder doesn't come back as a pile of nickels.
+    // 3. Close the last few cents with the biggest chips that still fit, so the
+    //    remainder doesn't come back as a handful of nickels.
     denomsAsc.slice().reverse().forEach(function(d){
-      while (leftover >= d.cents){
+      while (remaining >= d.cents){
         counts[d.key]++;
-        leftover -= d.cents;
+        remaining -= d.cents;
       }
     });
 
@@ -2711,7 +2800,14 @@
                '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button></div>';
       case 'total': return fmt(x.s.total);
       case 'roi': return fmtRoi(x.s.roi);
-      case 'bbPerHour': return x.s.bbPerHour === null ? '—' : fmtBB(x.s.bbPerHour);
+      // Say so when only some sessions have a clock, otherwise a losing player
+      // can show a winning rate off their one timed night.
+      case 'bbPerHour':
+        if (x.s.bbPerHour === null) return '—';
+        return fmtBB(x.s.bbPerHour) +
+          (x.s.bbSessions < x.s.sessions
+            ? ' <span class="zero">(' + x.s.bbSessions + '/' + x.s.sessions + ')</span>'
+            : '');
       case 'sessions': return String(x.s.sessions);
       case 'rebuys': return String(x.s.rebuys);
       case 'avgRebuys': return x.s.avgRebuys.toFixed(1);
@@ -2759,8 +2855,10 @@
         }).join('') + '</tr>';
       });
       h += '</tbody></table></div><div class="hint" style="margin-top:10px;">' +
-           'Swipe the table sideways for the rest, or tap a header to sort by it. BB/hr counts ' +
-           'only games played with blinds and the session clock set.</div>';
+           'Swipe the table sideways for the rest, or tap a header to sort by it. BB/hr only ' +
+           'counts games that have blinds and times &mdash; a figure like (2/5) means two of ' +
+           'five sessions, so it can disagree with the overall net. Someone who left early can ' +
+           'have their own hours set on their line\'s Edit button.</div>';
       card.innerHTML = h;
 
       card.querySelectorAll('[data-sortkey]').forEach(function(th){
@@ -2821,7 +2919,7 @@
               '<div class="game-date">' + when + '</div>' +
               '<div class="game-meta">' + g.entries.length + ' players &middot; ' + fmt(pot) + ' in play' +
                 (g.location ? ' &middot; ' + escapeHtml(g.location) : '') +
-                (g.bb ? ' &middot; ' + fmt(g.sb || 0) + '/' + fmt(g.bb) : '') +
+                (g.bb ? ' &middot; ' + stakesLabel(g.sb, g.bb) : '') +
               '</div>' +
             '</div>' +
             '<div style="display:flex;gap:6px;flex:0 0 auto;">' +
@@ -3257,7 +3355,7 @@
       var d = new Date(x.endedAt);
       var when = isNaN(d.getTime()) ? 'Session ' + x.index
         : d.toLocaleDateString(undefined, { month:'short', day:'numeric' });
-      var stakes = x.bb ? fmt(x.sb || 0) + '/' + fmt(x.bb) : 'stakes not set';
+      var stakes = x.bb ? stakesLabel(x.sb, x.bb) : 'stakes not set';
       return '<div class="game-line" style="margin-top:7px;">' +
                '<span class="nm">#' + x.index + ' &middot; ' + when + ' &middot; ' + stakes +
                  (x.location ? ' &middot; ' + escapeHtml(x.location) : '') + '</span>' +
@@ -3322,12 +3420,14 @@
   // Add past game, so both build it from here. `ns` namespaces the element ids.
   function gameFieldsHtml(ns, v){
     return '' +
-      '<span class="field-label">Date</span>' +
-      '<input type="date" id="' + ns + '-date" style="margin-top:0;" value="' + (v.date || '') + '">' +
+      '<div class="gf-field">' +
+        '<span class="field-label">Date</span>' +
+        '<input type="date" id="' + ns + '-date" style="margin-top:0;" value="' + (v.date || '') + '">' +
+      '</div>' +
       '<div class="gf-grid" style="margin-top:12px;">' +
-        '<div><span class="field-label">Start time</span>' +
+        '<div class="gf-field"><span class="field-label">Start time</span>' +
           '<input type="time" id="' + ns + '-time" style="margin-top:0;" value="' + (v.time || '') + '"></div>' +
-        '<div><span class="field-label">End time</span>' +
+        '<div class="gf-field"><span class="field-label">End time</span>' +
           '<input type="time" id="' + ns + '-endtime" style="margin-top:0;" value="' + (v.endTime || '') + '"></div>' +
       '</div>' +
       '<span class="field-label" style="margin-top:12px;">Location</span>' +
@@ -3632,9 +3732,54 @@
       if (typeof e.hours === 'number' && e.hours > hoursNow) hoursNow = e.hours;
     });
 
-    var d = new Date(g.endedAt);
+    var d = new Date(gameDate(g));
     var when = isNaN(d.getTime()) ? 'this game'
       : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+
+    // Someone missing from a game recorded on paper can be added here; players
+    // already in it are edited from their own line.
+    var newRows = [];
+
+    function paintNewRows(){
+      var host = document.getElementById('eg-rows');
+      if (!host) return;
+      host.innerHTML = newRows.map(function(r, i){
+        return '<div class="pg-row">' +
+                 '<div class="combo">' +
+                   '<input type="text" id="eg-name-' + i + '" data-egname="' + i + '" maxlength="24" ' +
+                     'placeholder="Player" autocomplete="off" value="' + escapeHtml(r.name) + '">' +
+                   '<div class="combo-list" id="eg-namelist-' + i + '"></div>' +
+                 '</div>' +
+                 '<input type="number" inputmode="decimal" min="0" step="0.01" data-egin="' + i + '" ' +
+                   'placeholder="In" value="' + r.buyin + '">' +
+                 '<input type="number" inputmode="decimal" min="0" step="0.01" data-egout="' + i + '" ' +
+                   'placeholder="Out" value="' + r.out + '">' +
+                 '<button type="button" class="btn-danger" data-egdel="' + i + '">&times;</button>' +
+               '</div>';
+      }).join('');
+
+      host.querySelectorAll('[data-egname]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-egname'));
+        inp.oninput = function(){ newRows[i].name = inp.value; };
+        attachCombo('eg-name-' + i, 'eg-namelist-' + i, rosterSuggestions, function(it){
+          newRows[i].name = it.value;
+        });
+      });
+      host.querySelectorAll('[data-egin]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-egin'));
+        inp.oninput = function(){ newRows[i].buyin = inp.value; };
+      });
+      host.querySelectorAll('[data-egout]').forEach(function(inp){
+        var i = Number(inp.getAttribute('data-egout'));
+        inp.oninput = function(){ newRows[i].out = inp.value; };
+      });
+      host.querySelectorAll('[data-egdel]').forEach(function(btn){
+        btn.onclick = function(){
+          newRows.splice(Number(btn.getAttribute('data-egdel')), 1);
+          paintNewRows();
+        };
+      });
+    }
 
     openModal({
       title: 'Edit game',
@@ -3647,19 +3792,48 @@
           location: g.location || '',
           sb: g.sb, bb: g.bb
         }) +
+        '<span class="field-label" style="margin-top:14px;">Add players to this game</span>' +
+        '<div id="eg-rows"></div>' +
+        '<button type="button" class="btn-ghost" id="eg-addplayer" style="width:100%;margin-top:8px;">' +
+          '+ Add a player</button>' +
         '<div class="hint" style="margin-top:8px;">' +
-          'Blinds and the two times are what BB/hr is worked out from, and the length ' +
-          'applies to everyone in this game. Per-player buy-ins and stacks stay on each ' +
-          'line\'s Edit button. An end time before the start counts as past midnight.' +
+          'The two times set everyone\'s session length, which is what BB/hr uses; anyone ' +
+          'who left early can have their own time set on their Edit button. An end time ' +
+          'before the start counts as past midnight.' +
         '</div>' +
         '<div class="error" id="eg-error" style="display:none;"></div>',
-      onOpen: function(){ attachGameFieldCombos('eg'); },
+      onOpen: function(){
+        attachGameFieldCombos('eg');
+        paintNewRows();
+        document.getElementById('eg-addplayer').onclick = function(){
+          newRows.push({ name:'', buyin:'', out:'' });
+          paintNewRows();
+        };
+      },
       buttons: [
         { label: 'Save game', cls:'btn-primary', onClick: function(){
             var err = document.getElementById('eg-error');
             var f = readGameFields('eg');
             if (f.error){
               err.textContent = f.error;
+              err.style.display = 'block';
+              return;
+            }
+
+            // Validate any players being added before touching the game.
+            var adding = newRows.filter(function(r){ return r.name.trim(); });
+            var bad = null;
+            adding.forEach(function(r){
+              var i = parseFloat(r.buyin), o = parseFloat(r.out);
+              if (isNaN(i) || i < 0) bad = bad || 'Enter a buy-in for ' + r.name.trim() + '.';
+              if (isNaN(o) || o < 0) bad = bad || 'Enter a cash-out for ' + r.name.trim() + '.';
+              var already = rosterByName(r.name.trim());
+              if (already && g.entries.some(function(e){ return e.rid === already.id; })){
+                bad = bad || r.name.trim() + ' is already in this game.';
+              }
+            });
+            if (bad){
+              err.textContent = bad;
               err.style.display = 'block';
               return;
             }
@@ -3672,10 +3846,28 @@
               g.endedAt = f.endedAt || new Date(new Date(f.startedAt).getTime() +
                 (hoursNow || 4) * 3600000).toISOString();
             }
+
+            adding.forEach(function(r){
+              var name = r.name.trim();
+              var existing = rosterByName(name);
+              var rid = existing ? existing.id : createRoster(name);
+              var buyin = round2(parseFloat(r.buyin));
+              var out = round2(parseFloat(r.out));
+              g.entries.push({
+                rid: rid, name: name, buyins: [buyin], finalStack: out,
+                net: round2(out - buyin), paid: false
+              });
+            });
+
+            // Session length only overwrites players who don't have their own.
             if (f.hours !== null && f.hours > 0){
-              g.entries.forEach(function(e){ e.hours = f.hours; });
+              g.entries.forEach(function(e){
+                if (!e.ownHours) e.hours = f.hours;
+              });
             } else {
-              g.entries.forEach(function(e){ delete e.hours; });
+              g.entries.forEach(function(e){
+                if (!e.ownHours) delete e.hours;
+              });
             }
             sortHistory();
 
@@ -3742,6 +3934,16 @@
           '<span class="field-label">Final stack</span>' +
           '<input type="number" inputmode="decimal" min="0" step="0.01" id="edit-finalstack" value="' + e.finalStack + '">' +
         '</div>' +
+        '<div style="margin-top:14px;">' +
+          '<span class="field-label">Hours at the table</span>' +
+          '<input type="number" inputmode="decimal" min="0" step="0.25" id="edit-hours" ' +
+            'placeholder="' + (typeof e.hours === 'number' ? e.hours : 'whole game') + '" value="' +
+            (e.ownHours && typeof e.hours === 'number' ? e.hours : '') + '">' +
+          '<div class="hint" style="margin-top:6px;">' +
+            'Only if they left early. Blank means they played the whole session, and ' +
+            'this is what BB/hr divides by.' +
+          '</div>' +
+        '</div>' +
         '<div class="error" id="edit-entry-error" style="display:none;"></div>',
       buttons: [
         { label: 'Save changes', cls:'btn-primary', onClick: function(){
@@ -3759,12 +3961,29 @@
               err.style.display = 'block';
               return;
             }
+            var hrRaw = document.getElementById('edit-hours').value;
+            var ownHrs = hrRaw === '' ? null : parseFloat(hrRaw);
+            if (ownHrs !== null && (isNaN(ownHrs) || ownHrs < 0)){
+              err.textContent = 'Hours at the table has to be zero or more';
+              err.style.display = 'block';
+              return;
+            }
+
             e.buyins = buyins.map(round2);
             e.finalStack = round2(fs);
             e.net = round2(fs - e.buyins.reduce(function(s,b){ return s + b; }, 0));
+
+            // A time set here is theirs and survives edits to the game's clock.
+            if (ownHrs !== null && ownHrs > 0){
+              e.hours = round2(ownHrs);
+              e.ownHours = true;
+            } else {
+              delete e.ownHours;
+            }
+
             closeModal();
             save();
-            renderHistory();
+            renderAll();
             showToast('Game updated');
         }},
         { label: 'Cancel', cls:'btn-ghost', onClick: closeModal }
@@ -4113,6 +4332,13 @@
   document.getElementById('buyin-input').addEventListener('keydown', function(e){
     if (e.key === 'Enter') addPlayerFlow();
   });
+
+  document.getElementById('players-mode').onclick = function(){
+    db.playersCompact = !db.playersCompact;
+    db.expandedRid = null;
+    save();
+    renderPlayers();
+  };
 
   document.getElementById('add-past-btn').onclick = addPastGame;
   document.getElementById('end-btn').onclick = endGame;
