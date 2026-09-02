@@ -356,18 +356,39 @@
 
   /* ---------- history tab ---------- */
   .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:1010px;}
-  table.stats th{white-space:nowrap;}
+  /* Every number column is centred under its own heading, and the columns are
+     only as wide as they need to be — the old right-alignment plus a 1010px
+     floor left a lot of empty grey to scroll through. */
+  table.stats{width:100%;border-collapse:collapse;font-size:13px;min-width:760px;}
   table.stats th{
-    text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.05em;
-    color:var(--text-lo);font-weight:600;padding:0 0 8px;border-bottom:1px solid var(--line);
+    text-align:center;white-space:nowrap;
+    font-size:10px;text-transform:uppercase;letter-spacing:0.04em;
+    color:var(--text-lo);font-weight:600;padding:0 9px 8px;border-bottom:1px solid var(--line);
   }
-  table.stats th:first-child,table.stats td:first-child{text-align:left;width:1%;white-space:nowrap;}
   table.stats th.sortable{cursor:pointer;user-select:none;}
   table.stats th.sortable:active{color:var(--text-hi);}
-  table.stats td{padding:9px 0;text-align:right;border-bottom:1px solid rgba(51,58,52,0.5);}
-  table.stats td:first-child{font-weight:600;}
+  table.stats td{
+    padding:9px;text-align:center;white-space:nowrap;
+    border-bottom:1px solid rgba(51,58,52,0.5);
+  }
   table.stats tr:last-child td{border-bottom:none;}
+
+  /* Frozen identity block: the games count and the name. */
+  /* Pinned to an exact width so the name column's `left` can match it — the
+     two have to agree or the name drifts as you scroll. JS re-checks it once
+     the tab is actually visible. */
+  table.stats th.col-sessions,table.stats td.col-sessions{
+    position:sticky;left:0;z-index:2;
+    width:44px;min-width:44px;max-width:44px;
+    padding-left:0;padding-right:4px;
+    background:var(--ink-1);
+  }
+  table.stats th.col-name,table.stats td.col-name{
+    position:sticky;left:44px;z-index:2;text-align:left;
+    padding-left:0;background:var(--ink-1);
+    box-shadow:1px 0 0 var(--line);
+  }
+  table.stats td.col-name{font-weight:600;}
   .pos{color:var(--felt-400);}
   .neg{color:var(--red);}
   .zero{color:var(--text-lo);}
@@ -550,6 +571,13 @@
   .chart-legend .cl-label{font-size:9.5px;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-lo);}
   .chart-legend .cl-val{font-size:14px;font-weight:700;margin-top:3px;}
   .chart-empty{font-size:12px;color:var(--text-lo);line-height:1.5;}
+  .log-game{
+    background:var(--ink-2);border-radius:8px;
+    padding:9px 11px;margin-top:7px;
+  }
+  .log-head{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:600;}
+  .log-head .log-when{color:var(--text-mid);font-weight:400;}
+  .log-sub{font-size:11px;color:var(--text-lo);margin-top:4px;line-height:1.5;}
   /* Keep "$45.00 — (+90.0%)" on one line — it reads as one figure. */
   .chart-sessions .game-line{align-items:baseline;}
   .chart-sessions .game-line > span:last-child{white-space:nowrap;flex:0 0 auto;}
@@ -1091,9 +1119,9 @@
     return (net / bb) / h;
   }
 
-  // "5¢ - 10¢" / "$1 - $2" — spaced so the two blinds read as two numbers.
+  // "5¢ / 10¢" — spaced so the two blinds read as two numbers.
   function stakesLabel(sb, bb){
-    return denomLabel(sb || 0) + ' - ' + denomLabel(bb || 0);
+    return denomLabel(sb || 0) + ' / ' + denomLabel(bb || 0);
   }
 
   // A count of big blinds, not money — no dollar sign.
@@ -2474,7 +2502,11 @@
   // round — splitting the buy-in evenly by value is what produced 144 nickels.
   var STACK_CHANGE_CHIPS = 15;   // of each of the two smallest colours
   var STACK_MAX_PER_COLOUR = 30; // beyond this a colour is unwieldy to count
-  var STACK_DECAY = 0.25;        // each colour up gets a quarter of the count
+  // Each colour up gets ~a third of the count below it. At 0.25 the middle
+  // colour held ~29% of a $20 stack — 23 quarters, more than anyone opens pots
+  // with; 0.35 lands on ~15 quarters and pushes the rest into dollar chips,
+  // which is where pots at these stakes actually get settled.
+  var STACK_DECAY = 0.35;
 
   function buildStack(targetCents, denomsAsc){
     var counts = {};
@@ -2749,12 +2781,14 @@
 
   // Player stats table columns — click a header to sort by it. `key` maps to
   // a statsFor() field ('name' reads the roster name instead).
+  // Games and Player are the identity block and stay frozen to the left while
+  // the rest scrolls, so a row never loses its name.
   var STATS_COLUMNS = [
+    { key:'sessions',   label:'Games' },
     { key:'name',       label:'Player' },
-    { key:'total',      label:'Net' },
+    { key:'total',      label:'Net profit' },
     { key:'roi',        label:'ROI' },
     { key:'bbPerHour',  label:'BB/hr' },
-    { key:'sessions',   label:'Games' },
     { key:'rebuys',     label:'Rebuys' },
     { key:'avgRebuys',  label:'RB/game' },
     { key:'totalBuyin', label:'Total buy-in' },
@@ -2779,11 +2813,18 @@
   // Player always stays the pinned first column (it carries the Graph button
   // and its own nowrap/left-align CSS) — whatever's being sorted moves to
   // right after it, so you see it without swiping, instead of always Net.
+  // Games and Player lead and stay frozen; whatever is being sorted on comes
+  // next so it's the first thing you see after them.
   function orderedStatsColumns(){
-    var nameCol = STATS_COLUMNS.filter(function(c){ return c.key === 'name'; });
-    var activeCol = STATS_COLUMNS.filter(function(c){ return c.key === statsSortKey && c.key !== 'name'; });
-    var rest = STATS_COLUMNS.filter(function(c){ return c.key !== 'name' && c.key !== statsSortKey; });
-    return nameCol.concat(activeCol, rest);
+    function frozen(c){ return c.key === 'sessions' || c.key === 'name'; }
+    var lead = STATS_COLUMNS.filter(frozen);
+    var activeCol = STATS_COLUMNS.filter(function(c){
+      return c.key === statsSortKey && !frozen(c);
+    });
+    var rest = STATS_COLUMNS.filter(function(c){
+      return !frozen(c) && c.key !== statsSortKey;
+    });
+    return lead.concat(activeCol, rest);
   }
 
   function statsCellClass(x, key){
@@ -2797,7 +2838,8 @@
     switch (key){
       case 'name':
         return '<div class="stat-name"><span>' + escapeHtml(shortName(x.r.name)) + '</span>' +
-               '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button></div>';
+               '<button class="btn-mini" data-statchart="' + x.r.id + '">Graph</button>' +
+               '<button class="btn-mini" data-statlog="' + x.r.id + '">Log</button></div>';
       case 'total': return fmt(x.s.total);
       case 'roi': return fmtRoi(x.s.roi);
       // Say so when only some sessions have a clock, otherwise a losing player
@@ -2845,13 +2887,16 @@
       var h = '<div class="table-scroll"><table class="stats"><thead><tr>' +
               orderedCols.map(function(col){
                 var arrow = statsSortKey === col.key ? (statsSortDir === 'asc' ? ' ▲' : ' ▼') : '';
-                return '<th class="sortable" data-sortkey="' + col.key + '">' + col.label + arrow + '</th>';
+                return '<th class="sortable col-' + col.key + '" data-sortkey="' + col.key + '">' +
+                       col.label + arrow + '</th>';
               }).join('') +
               '</tr></thead><tbody>';
       rows.forEach(function(x){
         h += '<tr>' + orderedCols.map(function(col){
-          var c = statsCellClass(x, col.key);
-          return '<td' + (c ? ' class="' + c + '"' : '') + '>' + statsCellContent(x, col.key) + '</td>';
+          var c = 'col-' + col.key;
+          var extra = statsCellClass(x, col.key);
+          if (extra) c += ' ' + extra;
+          return '<td class="' + c + '">' + statsCellContent(x, col.key) + '</td>';
         }).join('') + '</tr>';
       });
       h += '</tbody></table></div><div class="hint" style="margin-top:10px;">' +
@@ -2863,6 +2908,9 @@
 
       card.querySelectorAll('[data-sortkey]').forEach(function(th){
         th.onclick = function(){ sortStatsBy(th.getAttribute('data-sortkey')); };
+      });
+      card.querySelectorAll('[data-statlog]').forEach(function(btn){
+        btn.onclick = function(){ showPlayerLog(Number(btn.getAttribute('data-statlog'))); };
       });
       card.querySelectorAll('[data-statchart]').forEach(function(btn){
         btn.onclick = function(){ showPlayerGraph(Number(btn.getAttribute('data-statchart'))); };
@@ -3124,8 +3172,6 @@
 
     var zeroY = y(0);
     var pts = series.map(function(s, i){ return x(i) + ',' + y(s.cumulative); });
-    var last = series[series.length - 1].cumulative;
-    var lineColor = last > 0 ? '#3fae66' : (last < 0 ? '#c94040' : '#7c847d');
 
     // --- y axis: gridline + tick + label at every step ---
     var yAxis = '';
@@ -3158,16 +3204,47 @@
 
     var dots = series.map(function(s, i){
       return '<circle cx="' + x(i) + '" cy="' + y(s.cumulative) + '" r="' +
-             (series.length > 14 ? 2 : 3) + '" fill="' + lineColor + '"/>';
+             (series.length > 14 ? 2 : 3) + '" fill="' +
+             (s.cumulative < 0 ? '#c94040' : '#3fae66') + '"/>';
     }).join('');
+
+    // Colour by where the line actually is, not by where it ends up: each leg is
+    // split at the break-even crossing so the losing stretches stay red.
+    var GREEN = '#3fae66', RED = '#c94040';
+    var legs = '';
+    var shade = '';
+    for (var i = 0; i < series.length - 1; i++){
+      var v0 = series[i].cumulative, v1 = series[i + 1].cumulative;
+      var x0 = x(i), x1 = x(i + 1);
+      var parts;
+      if ((v0 < 0) === (v1 < 0) || v0 === 0 || v1 === 0){
+        parts = [[x0, v0, x1, v1]];
+      } else {
+        // Straight-line interpolation to the point where it crosses zero.
+        var t = Math.abs(v0) / (Math.abs(v0) + Math.abs(v1));
+        var xc = x0 + (x1 - x0) * t;
+        parts = [[x0, v0, xc, 0], [xc, 0, x1, v1]];
+      }
+      parts.forEach(function(p){
+        var below = (p[1] < 0 || p[3] < 0);
+        var colour = below ? RED : GREEN;
+        legs += '<line x1="' + p[0] + '" y1="' + y(p[1]) + '" x2="' + p[2] + '" y2="' + y(p[3]) +
+                '" stroke="' + colour + '" stroke-width="2.2" stroke-linecap="round"/>';
+        shade += '<path d="M' + p[0] + ',' + zeroY + ' L' + p[0] + ',' + y(p[1]) +
+                 ' L' + p[2] + ',' + y(p[3]) + ' L' + p[2] + ',' + zeroY + ' Z" fill="' +
+                 colour + '" opacity="0.13"/>';
+      });
+    }
+    if (series.length === 1){
+      dots = '<circle cx="' + x(0) + '" cy="' + y(series[0].cumulative) + '" r="3.5" fill="' +
+             (series[0].cumulative < 0 ? RED : GREEN) + '"/>';
+    }
 
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" ' +
              'aria-label="Cumulative profit over ' + series.length + ' sessions">' +
              yAxis +
-             '<path d="M' + x(0) + ',' + zeroY + ' L' + pts.join(' L') +
-               ' L' + x(series.length - 1) + ',' + zeroY + ' Z" fill="' + lineColor + '" opacity="0.13"/>' +
-             '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + lineColor +
-               '" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' +
+             shade +
+             legs +
              dots +
              '<line x1="' + padL + '" y1="' + padT + '" x2="' + padL + '" y2="' + (padT + plotH) +
                '" stroke="#4a544c" stroke-width="1"/>' +
@@ -3371,7 +3448,7 @@
       '<div class="chart-legend">' +
         '<div class="cl"><div class="cl-label">Sessions</div>' +
           '<div class="cl-val">' + s.sessions + '</div></div>' +
-        '<div class="cl"><div class="cl-label">Net</div>' +
+        '<div class="cl"><div class="cl-label">Net profit</div>' +
           '<div class="cl-val ' + cls(s.total) + '">' + fmt(s.total) + '</div></div>' +
         '<div class="cl"><div class="cl-label">ROI</div>' +
           '<div class="cl-val ' + cls(s.roi) + '">' + fmtRoi(s.roi) + '</div></div>' +
@@ -3387,6 +3464,69 @@
       '</div>' +
       '<div class="chart-sessions" style="margin-top:16px;">' +
         '<span class="field-label">Recent sessions</span>' + recent + '</div>';
+  }
+
+  // Everything for one player: their headline numbers and every night they've
+  // played, newest first.
+  function showPlayerLog(rid){
+    var r = rosterById(rid);
+    if (!r) return;
+    var s = statsFor(rid);
+    var series = sessionsFor(rid).slice().reverse();
+
+    var games = series.map(function(x){
+      var d = new Date(x.endedAt);
+      var when = isNaN(d.getTime()) ? 'Session ' + x.index
+        : d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+      return '<div class="log-game">' +
+               '<div class="log-head">' +
+                 '<span class="log-when">#' + x.index + ' &middot; ' + when + '</span>' +
+                 '<span class="' + cls(x.net) + '">' + fmt(x.net) + '</span>' +
+               '</div>' +
+               '<div class="log-sub">' +
+                 '<span class="amt-in">' + fmt(x.totalIn) + ' in</span>' +
+                 ' &middot; <span class="' + cls(x.net) + '">' + fmt(x.totalIn + x.net) + ' out</span>' +
+                 ' / <span class="' + cls(x.roi) + '">' + fmtRoi(x.roi) + '</span>' +
+                 (x.hours ? ' &middot; ' + fmtHours(x.hours) : '') +
+                 (x.bb ? ' &middot; ' + stakesLabel(x.sb, x.bb) : '') +
+                 (x.location ? ' &middot; ' + escapeHtml(x.location) : '') +
+               '</div>' +
+             '</div>';
+    }).join('');
+
+    openModal({
+      title: r.name,
+      body:
+        '<div class="chart-legend">' +
+          '<div class="cl"><div class="cl-label">Games</div>' +
+            '<div class="cl-val">' + s.sessions + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Net profit</div>' +
+            '<div class="cl-val ' + cls(s.total) + '">' + fmt(s.total) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">ROI</div>' +
+            '<div class="cl-val ' + cls(s.roi) + '">' + fmtRoi(s.roi) + '</div></div>' +
+        '</div>' +
+        '<div class="chart-legend" style="margin-top:8px;">' +
+          '<div class="cl"><div class="cl-label">Avg / game</div>' +
+            '<div class="cl-val ' + cls(s.avg) + '">' + fmt(s.avg) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Best</div>' +
+            '<div class="cl-val ' + cls(s.best) + '">' + fmt(s.best || 0) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Worst</div>' +
+            '<div class="cl-val ' + cls(s.worst) + '">' + fmt(s.worst || 0) + '</div></div>' +
+        '</div>' +
+        '<div class="chart-legend" style="margin-top:8px;">' +
+          '<div class="cl"><div class="cl-label">BB/hr</div>' +
+            '<div class="cl-val ' + cls(s.bbPerHour) + '">' +
+              (s.bbPerHour === null ? '—' : fmtBB(s.bbPerHour)) + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Rebuys</div>' +
+            '<div class="cl-val">' + s.rebuys + '</div></div>' +
+          '<div class="cl"><div class="cl-label">Buy-in/game</div>' +
+            '<div class="cl-val">' + fmt(s.avgBuyin) + '</div></div>' +
+        '</div>' +
+        (games
+          ? '<div style="margin-top:16px;"><span class="field-label">Every session</span>' + games + '</div>'
+          : '<div class="chart-empty" style="margin-top:14px;">No completed games yet.</div>'),
+      buttons: [{ label: 'Close', cls:'btn-ghost', onClick: closeModal }]
+    });
   }
 
   // The Graph button on a stats row just points this section at that player.
@@ -4291,6 +4431,17 @@
 
   /* ---------------- tabs ---------------- */
 
+  // The frozen name column can only be measured once its tab is on screen.
+  function alignFrozenColumn(){
+    var games = document.querySelector('#stats-card th.col-sessions');
+    if (!games) return;
+    var w = Math.round(games.getBoundingClientRect().width);
+    if (w <= 0) return;
+    document.querySelectorAll('#stats-card .col-name').forEach(function(cell){
+      cell.style.left = w + 'px';
+    });
+  }
+
   function switchTab(name){
     document.querySelectorAll('.tab').forEach(function(t){
       t.className = 'tab' + (t.getAttribute('data-tab') === name ? ' active' : '');
@@ -4299,6 +4450,7 @@
     ['table','chips','seats','stats','history','pay'].forEach(function(n){
       document.getElementById('panel-' + n).classList.toggle('active', n === name);
     });
+    if (name === 'stats') alignFrozenColumn();
     window.scrollTo(0, 0);
   }
 
@@ -4331,6 +4483,15 @@
   });
   document.getElementById('buyin-input').addEventListener('keydown', function(e){
     if (e.key === 'Enter') addPlayerFlow();
+  });
+
+  // Tapping into a number field selects what's there, so typing replaces it
+  // instead of landing next to an existing 0 and making it 05.
+  document.addEventListener('focusin', function(e){
+    var el = e.target;
+    if (el && el.tagName === 'INPUT' && el.type === 'number'){
+      setTimeout(function(){ try{ el.select(); }catch(err){} }, 0);
+    }
   });
 
   document.getElementById('players-mode').onclick = function(){
